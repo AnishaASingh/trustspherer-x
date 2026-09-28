@@ -1,0 +1,64 @@
+version: "3.8"
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: trustsphere-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - trustsphere-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: trustsphere-backend
+    restart: always
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_URL=mongodb://mongodb:27017
+      - MONGODB_DATABASE=TrustSphereDB
+      - JWT_SECRET=trustsphere-production-super-secure-key-2026
+      - INGESTION_ENABLED=true
+      - INGESTION_FOLDER=/app/ingestion
+      - INGESTION_INTERVAL_SECONDS=10
+      - EMAIL_INGESTION_ENABLED=false
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./ingestion:/app/ingestion
+    networks:
+      - trustsphere-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: trustsphere-frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+    networks:
+      - trustsphere-net
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  trustsphere-net:
+    driver: bridge

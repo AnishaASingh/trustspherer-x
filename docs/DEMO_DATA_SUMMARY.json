@@ -1,0 +1,98 @@
+{
+  "timestamp": "2026-09-23 23:20:57",
+  "departments_count": 5,
+  "employees_count": 8,
+  "assets_count": 9,
+  "risk_breakdown": {
+    "LOW": 6,
+    "MEDIUM": 2,
+    "HIGH": 1,
+    "CRITICAL": 0
+  },
+  "incidents_count": 1,
+  "recommendations_count": 9,
+  "audit_logs_count": 36,
+  "verified_assets": [
+    {
+      "filename": "Company_Policy_2026.pdf",
+      "asset_id": "AST-4E618E",
+      "department": "Human Resources",
+      "trust_score": 93.5,
+      "risk": "Low Risk",
+      "status": "VERIFIED",
+      "incident_id": null
+    },
+    {
+      "filename": "Employee_Joining_Document.pdf",
+      "asset_id": "AST-07B3DE",
+      "department": "Human Resources",
+      "trust_score": 93.5,
+      "risk": "Low Risk",
+      "status": "VERIFIED",
+      "incident_id": null
+    },
+    {
+      "filename": "Quarterly_Financial_Report.pdf",
+      "asset_id": "AST-324E07",
+      "department": "Finance",
+      "trust_score": 93.5,
+      "risk": "Low Risk",
+      "status": "VERIFIED",
+      "incident_id": null
+    },
+    {
+      "filename": "Vendor_Invoice_September_2026.pdf",
+      "asset_id": "AST-5090F4",
+      "department": "Finance",
+      "trust_score": 65.0,
+      "risk": "Medium Risk",
+      "status": "UNDER REVIEW",
+      "incident_id": null
+    },
+    {
+      "filename": "IT_Security_Audit_Report.pdf",
+      "asset_id": "AST-A8DF40",
+      "department": "Information Technology",
+      "trust_score": 93.5,
+      "risk": "Low Risk",
+      "status": "VERIFIED",
+      "incident_id": null
+    },
+    {
+      "filename": "Employee_Access_Request.pdf",
+      "asset_id": "AST-84EA01",
+      "department": "Information Technology",
+      "trust_score": 65.0,
+      "risk": "Medium Risk",
+      "status": "UNDER REVIEW",
+      "incident_id": null
+    },
+    {
+      "filename": "Operations_Compliance_Report.pdf",
+      "asset_id": "AST-1FAE86",
+      "department": "Operations",
+      "trust_score": 93.5,
+      "risk": "Low Risk",
+      "status": "VERIFIED",
+      "incident_id": null
+    },
+    {
+      "filename": "Legal_Compliance_Certificate.pdf",
+      "asset_id": "AST-BC17B4",
+      "department": "Legal & Compliance",
+      "trust_score": 93.5,
+      "risk": "Low Risk",
+      "status": "VERIFIED",
+      "incident_id": null
+    },
+    {
+      "filename": "Synthetic_Security_Threat_Test.pdf",
+      "asset_id": "AST-EF5E2E",
+      "department": "Information Technology",
+      "trust_score": 45.0,
+      "risk": "High Risk",
+      "status": "FLAGGED",
+      "incident_id": null
+    }
+  ]
+}

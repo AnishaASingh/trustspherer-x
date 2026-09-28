@@ -1,0 +1,152 @@
+{
+  "timestamp": "2026-09-23 23:01:22",
+  "total": 24,
+  "passed": 24,
+  "failed": 0,
+  "results": [
+    {
+      "step": 1,
+      "title": "Docker Deployment Configuration Files",
+      "passed": true,
+      "detail": "Checked: docker-compose.yml, Dockerfiles, nginx.conf, .env.example"
+    },
+    {
+      "step": 2,
+      "title": "Enterprise Deployment Guide Documentation",
+      "passed": true,
+      "detail": "File size: 5583 bytes"
+    },
+    {
+      "step": 3,
+      "title": "FastAPI Backend Health Telemetry",
+      "passed": true,
+      "detail": "HTTP 200, status=healthy"
+    },
+    {
+      "step": 4,
+      "title": "MongoDB TrustSphereDB Architecture",
+      "passed": true,
+      "detail": "All 9 canonical collections confirmed: {'asset_verifications', 'departments', 'assets', 'incidents', 'employees', 'audit_logs', 'recommendations', 'trust_scores', 'users'}"
+    },
+    {
+      "step": 5,
+      "title": "Default Admin Authentication",
+      "passed": true,
+      "detail": "HTTP 200, JWT token acquired"
+    },
+    {
+      "step": 6,
+      "title": "JWT Session Verification (/api/auth/me)",
+      "passed": true,
+      "detail": "Authenticated identity: admin@trustsphere.com, Role: ADMIN"
+    },
+    {
+      "step": 7,
+      "title": "Unified 7-Layer Manual Verification",
+      "passed": true,
+      "detail": "Asset ID: AST-935704, Trust Score: 92.0/100"
+    },
+    {
+      "step": 8,
+      "title": "Persistence in asset_verifications & trust_scores",
+      "passed": true,
+      "detail": "Verification doc found: True, Trust score doc found: True"
+    },
+    {
+      "step": 9,
+      "title": "Automated Security Incident Generation",
+      "passed": true,
+      "detail": "Incident ID: INC-3553A1, Severity: HIGH"
+    },
+    {
+      "step": 10,
+      "title": "Persistence in recommendations Collection",
+      "passed": true,
+      "detail": "Recommendation: The digital asset appears trustworthy. No maj..."
+    },
+    {
+      "step": 11,
+      "title": "Watched Folder Directory Architecture",
+      "passed": true,
+      "detail": "incoming, processed, failed verified in C:\\TrustSphere\\ingestion"
+    },
+    {
+      "step": 12,
+      "title": "Background Ingestion Worker Telemetry",
+      "passed": true,
+      "detail": "Watcher running: True, Last scan: 2026-09-23T17:31:18.951841"
+    },
+    {
+      "step": 13,
+      "title": "Automated Watched Folder File Ingestion",
+      "passed": true,
+      "detail": "Scanned and processed: 1 files"
+    },
+    {
+      "step": 14,
+      "title": "File Transition to Ingestion Processed Enclave",
+      "passed": true,
+      "detail": "Removed from incoming: True, Present in processed: True"
+    },
+    {
+      "step": 15,
+      "title": "Ingested Asset MongoDB Persistence",
+      "passed": true,
+      "detail": "Persisted asset: AST-249FF3"
+    },
+    {
+      "step": 16,
+      "title": "Cryptographic Duplicate Asset Detection (SHA-256)",
+      "passed": true,
+      "detail": "Duplicate flagged: True"
+    },
+    {
+      "step": 17,
+      "title": "Duplicate Prevention: No Redundant MongoDB Insertions",
+      "passed": true,
+      "detail": "Matching assets in DB: 1 (strictly 1 expected)"
+    },
+    {
+      "step": 18,
+      "title": "Audit Telemetry: DUPLICATE_ASSET_SKIPPED Logged",
+      "passed": true,
+      "detail": "Audit event found: File 'duplicate_copy_1790184465.txt' is a cryptographic..."
+    },
+    {
+      "step": 19,
+      "title": "Duplicate File Enclave Isolation",
+      "passed": true,
+      "detail": "Cleared from incoming: True, Safely archived: True"
+    },
+    {
+      "step": 20,
+      "title": "IMAP Email Ingestion Service Architecture",
+      "passed": true,
+      "detail": "File size: 9362 bytes"
+    },
+    {
+      "step": 21,
+      "title": "Safe Fallback for Email Ingestion Polling",
+      "passed": true,
+      "detail": "HTTP 200, status=disabled, processed=0"
+    },
+    {
+      "step": 22,
+      "title": "Digital Twin UI Telemetry & Live Status Chip",
+      "passed": true,
+      "detail": "Chip 'Live Digital Twin': True, 'Last synchronized': True"
+    },
+    {
+      "step": 23,
+      "title": "Production Vite/React Frontend Build",
+      "passed": true,
+      "detail": "dist/index.html verified (1294 bytes)"
+    },
+    {
+      "step": 24,
+      "title": "Pristine Database Cleanup Sanitization Utility",
+      "passed": true,
+      "detail": "scripts/cleanup_test_data.py confirmed"
+    }
+  ]
+}

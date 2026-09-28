@@ -1,0 +1,82 @@
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ToastProvider } from './context/ToastContext';
+import { AuthProvider } from './context/AuthContext';
+import { SecurityProvider } from './context/SecurityContext';
+
+import AppLayout from './components/layout/AppLayout';
+import ProtectedRoute from './components/layout/ProtectedRoute';
+
+// Pages
+import Landing from './pages/Landing';
+import Register from './pages/Register';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Assets from './pages/Assets';
+import AssetDetails from './pages/AssetDetails';
+import UploadAsset from './pages/UploadAsset';
+import TrustAnalysis from './pages/TrustAnalysis';
+import Incidents from './pages/Incidents';
+import IncidentDetails from './pages/IncidentDetails';
+import Employees from './pages/Employees';
+import EmployeeDetails from './pages/EmployeeDetails';
+import Departments from './pages/Departments';
+import DepartmentDetails from './pages/DepartmentDetails';
+import DigitalTwin from './pages/DigitalTwin';
+import AuditLogs from './pages/AuditLogs';
+import Reports from './pages/Reports';
+import Settings from './pages/Settings';
+import UserManagement from './pages/UserManagement';
+import EmailIntegration from './pages/EmailIntegration';
+import AIAssistant from './pages/AIAssistant';
+
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <ToastProvider>
+        <AuthProvider>
+          <SecurityProvider>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<Landing />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/login" element={<Login />} />
+
+              {/* Protected Application Routes */}
+              <Route
+                element={
+                  <ProtectedRoute>
+                    <AppLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/assets" element={<Assets />} />
+                <Route path="/assets/:id" element={<AssetDetails />} />
+                <Route path="/upload" element={<UploadAsset />} />
+                <Route path="/email-integration" element={<EmailIntegration />} />
+                <Route path="/ai-assistant" element={<AIAssistant />} />
+                <Route path="/trust-analysis" element={<TrustAnalysis />} />
+                <Route path="/incidents" element={<Incidents />} />
+                <Route path="/incidents/:id" element={<IncidentDetails />} />
+                <Route path="/employees" element={<Employees />} />
+                <Route path="/employees/:id" element={<EmployeeDetails />} />
+                <Route path="/departments" element={<Departments />} />
+                <Route path="/departments/:id" element={<DepartmentDetails />} />
+                <Route path="/digital-twin" element={<DigitalTwin />} />
+                <Route path="/audit-logs" element={<AuditLogs />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/users" element={<UserManagement />} />
+              </Route>
+
+              {/* Catch-all redirect */}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </SecurityProvider>
+        </AuthProvider>
+      </ToastProvider>
+    </BrowserRouter>
+  );
+}
