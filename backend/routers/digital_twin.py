@@ -1,5 +1,5 @@
 from typing import Dict, Any, List
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from database import (
     get_departments_collection,
     get_employees_collection,
@@ -8,8 +8,13 @@ from database import (
     get_trust_scores_collection
 )
 from schemas.common import ApiResponse
+from utils.security import require_admin_when_authenticated
 
-router = APIRouter(prefix="/api/digital-twin", tags=["Digital Twin"])
+router = APIRouter(
+    prefix="/api/digital-twin",
+    tags=["Digital Twin"],
+    dependencies=[Depends(require_admin_when_authenticated)]
+)
 
 @router.get("/overview", response_model=ApiResponse[Dict[str, Any]])
 def get_digital_twin_overview():

@@ -403,6 +403,12 @@ export const ingestionApi = {
     });
   },
 
+  syncGmail: async (department = 'Operations') => {
+    return await request(`/ingestion/email/sync?department=${encodeURIComponent(department)}`, {
+      method: 'POST'
+    });
+  },
+
   ingestDemoEmail: async (formData) => {
     return await request('/ingestion/email/demo', {
       method: 'POST',
@@ -417,8 +423,8 @@ export const ingestionApi = {
     });
   },
 
-  getRecentEmails: async (limit = 25) => {
-    return await request(`/ingestion/email/recent?limit=${limit}`);
+  getRecentEmails: async (limit = 25, includeDemo = true) => {
+    return await request(`/ingestion/email/recent?limit=${limit}&include_demo=${includeDemo}`);
   },
 
   triggerFolderScan: async (department = 'Operations') => {

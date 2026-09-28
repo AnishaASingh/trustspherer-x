@@ -12,14 +12,18 @@ import {
   AlertCircle,
   CheckCircle2,
   Info,
-  AlertTriangle
+  AlertTriangle,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSecurity } from '../../context/SecurityContext';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function Navbar({ onToggleSidebar }) {
-  const { user, organization } = useAuth();
+  const { user, organization, isAdmin } = useAuth();
   const { notifications, markNotificationRead, markAllNotificationsRead } = useSecurity();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -46,25 +50,26 @@ export default function Navbar({ onToggleSidebar }) {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  // Derive route title
+  // Derive route title using consistent TrustSphere terminology
   const getPageTitle = (pathname) => {
-    if (pathname.startsWith('/assets/')) return 'Asset Telemetry & Trust Factors';
-    if (pathname.startsWith('/incidents/')) return 'Incident Details & Triage';
-    if (pathname.startsWith('/employees/')) return 'Employee Security Profile';
-    if (pathname.startsWith('/departments/')) return 'Department Trust Governance';
+    if (pathname.startsWith('/assets/')) return 'Digital Asset Details';
+    if (pathname.startsWith('/incidents/')) return 'Incident Details';
+    if (pathname.startsWith('/employees/')) return 'Employee Details';
+    if (pathname.startsWith('/departments/')) return 'Department Details';
 
     switch (pathname) {
-      case '/dashboard': return 'Security Intelligence Dashboard';
-      case '/assets': return 'Digital Assets Registry';
-      case '/upload': return 'Asset Ingestion & Scanning';
-      case '/trust-analysis': return 'Trust Analysis Engine';
-      case '/incidents': return 'Security Incidents';
-      case '/employees': return 'Employee Directory';
-      case '/departments': return 'Organizational Hierarchy';
-      case '/digital-twin': return 'Digital Twin Relationship Topology';
-      case '/audit-logs': return 'Tamper-Evident Audit Trail';
+      case '/dashboard': return 'Dashboard';
+      case '/assets': return 'Digital Assets';
+      case '/upload': return 'Upload Asset';
+      case '/email-integration': return 'Email Verification';
+      case '/trust-analysis': return 'Trust Analysis';
+      case '/incidents': return 'Incidents';
+      case '/employees': return 'Employees';
+      case '/departments': return 'Departments';
+      case '/digital-twin': return 'Digital Twin';
+      case '/audit-logs': return 'TrustSphere Audit Logs';
       case '/reports': return 'Trust & Risk Reports';
-      case '/settings': return 'Platform Settings';
+      case '/settings': return 'Settings';
       default: return 'TrustSphere';
     }
   };
@@ -171,6 +176,38 @@ export default function Navbar({ onToggleSidebar }) {
             {organization?.name || "TrustSphere Corp"}
           </span>
         </div>
+
+        {/* Theme Toggle Button */}
+        <button
+          onClick={toggleTheme}
+          className="btn-ghost"
+          style={{
+            padding: '0.45rem 0.65rem',
+            borderRadius: 'var(--radius-full)',
+            border: '1px solid var(--border-subtle)',
+            background: 'var(--bg-secondary)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            color: 'var(--text-primary)',
+            fontSize: '0.75rem',
+            fontWeight: 600
+          }}
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        >
+          {theme === 'dark' ? (
+            <>
+              <Sun size={15} color="#F59E0B" />
+              <span>Light</span>
+            </>
+          ) : (
+            <>
+              <Moon size={15} color="var(--accent-cyan)" />
+              <span>Dark</span>
+            </>
+          )}
+        </button>
 
         {/* Notifications Popover */}
         <div style={{ position: 'relative' }} ref={notifRef}>
@@ -401,21 +438,23 @@ export default function Navbar({ onToggleSidebar }) {
                 >
                   Profile & Settings
                 </Link>
-                <Link
-                  to="/audit-logs"
-                  onClick={() => setProfileOpen(false)}
-                  style={{
-                    display: 'block',
-                    padding: '0.5rem 0.75rem',
-                    fontSize: '0.8rem',
-                    color: 'var(--text-secondary)',
-                    textDecoration: 'none',
-                    borderRadius: 'var(--radius-sm)'
-                  }}
-                  className="btn-ghost"
-                >
-                  My Audit History
-                </Link>
+                {isAdmin && (
+                  <Link
+                    to="/audit-logs"
+                    onClick={() => setProfileOpen(false)}
+                    style={{
+                      display: 'block',
+                      padding: '0.5rem 0.75rem',
+                      fontSize: '0.8rem',
+                      color: 'var(--text-secondary)',
+                      textDecoration: 'none',
+                      borderRadius: 'var(--radius-sm)'
+                    }}
+                    className="btn-ghost"
+                  >
+                    Audit Logs
+                  </Link>
+                )}
               </div>
             </div>
           )}

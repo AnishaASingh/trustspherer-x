@@ -66,10 +66,10 @@ export default function AuditLogs() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-            Tamper-Evident System Audit Trail
+            TrustSphere Audit Logs
           </h1>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            Immutable immutable-style activity logging of operator decisions, uploads, and incident modifications.
+            Track system activities, user actions, uploads, and security events.
           </p>
         </div>
 

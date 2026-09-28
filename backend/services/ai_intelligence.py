@@ -16,7 +16,7 @@ from database import (
     get_audit_logs_collection
 )
 
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 logger = logging.getLogger("trustsphere.ai_intelligence")
 
 GROQ_BASE_URL = "https://api.groq.com/openai/v1/chat/completions"

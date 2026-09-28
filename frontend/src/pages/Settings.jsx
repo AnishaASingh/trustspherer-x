@@ -12,11 +12,13 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useTheme } from '../context/ThemeContext';
 import { Storage } from '../utils/storage';
 
 export default function Settings() {
   const { user, organization } = useAuth();
   const { addToast } = useToast();
+  const { theme, setTheme } = useTheme();
 
   const [activeTab, setActiveTab] = useState('profile');
 
@@ -37,9 +39,8 @@ export default function Settings() {
   const [sessionTimeout, setSessionTimeout] = useState('60');
 
   // Appearance
-  const [theme, setTheme] = useState('dark');
-  const [compactMode, setCompactMode] = useState(false);
-  const [glowIntensity, setGlowIntensity] = useState('normal');
+  const [compactMode, setCompactMode] = useState(() => Boolean(Storage.getSettings()?.compactMode));
+  const [glowIntensity, setGlowIntensity] = useState(() => Storage.getSettings()?.glowIntensity || 'normal');
 
   const handleSaveProfile = (e) => {
     e.preventDefault();
@@ -70,7 +71,7 @@ export default function Settings() {
   const handleSaveAppearance = (e) => {
     e.preventDefault();
     Storage.setSettings({ theme, compactMode, glowIntensity });
-    addToast("Appearance preferences saved.", "success");
+    addToast(`Appearance preferences saved (${theme === 'light' ? 'Light' : 'Dark'} mode active).`, "success");
   };
 
   return (
@@ -326,15 +327,14 @@ export default function Settings() {
 
           <form onSubmit={handleSaveAppearance}>
             <div className="input-group">
-              <label className="input-label">Interface Theme</label>
+              <label className="input-label">Theme</label>
               <select 
                 className="input-field"
                 value={theme}
                 onChange={(e) => setTheme(e.target.value)}
               >
-                <option value="dark">Cyber Dark Navy (Default SOC)</option>
-                <option value="midnight">Deep Midnight Black</option>
-                <option value="slate">High-Contrast Slate</option>
+                <option value="dark">Dark (Default TrustSphere Cybersecurity Theme)</option>
+                <option value="light">Light (Clean High-Contrast Light Theme)</option>
               </select>
             </div>
 

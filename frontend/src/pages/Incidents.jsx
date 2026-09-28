@@ -77,16 +77,16 @@ export default function Incidents() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-            Security Incidents Management
+            Incidents
           </h1>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            Track, investigate, and resolve anomalous digital asset threats across departments.
+            Track, investigate, and update status for security incidents across departments.
           </p>
         </div>
 
         <button onClick={handleExportCSV} className="btn btn-secondary">
           <Download size={16} />
-          <span>Export Incidents CSV</span>
+          <span>Export Incidents</span>
         </button>
       </div>
       

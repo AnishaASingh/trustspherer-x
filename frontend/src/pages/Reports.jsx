@@ -61,7 +61,7 @@ export default function Reports() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-            Trust & Risk Intelligence Report
+            Trust & Risk Reports
           </h1>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
             Executive compliance assessment and cross-departmental risk distribution.
@@ -71,11 +71,11 @@ export default function Reports() {
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button onClick={handlePrintPDF} className="btn btn-secondary">
             <Printer size={16} />
-            <span>Export PDF (Print)</span>
+            <span>Print PDF</span>
           </button>
           <button onClick={handleExportSummaryCSV} className="btn btn-primary">
             <Download size={16} />
-            <span>Export CSV</span>
+            <span>Export Report</span>
           </button>
         </div>
       </div>

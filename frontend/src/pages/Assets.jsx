@@ -110,18 +110,14 @@ export default function Assets() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-            Digital Assets Registry
+            Digital Assets
           </h1>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            Total {assets.length} monitored assets • {filteredAssets.length} matching criteria
+            {assets.length} verified and monitored assets • {filteredAssets.length} matching criteria
           </p>
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button onClick={handleExportCSV} className="btn btn-secondary">
-            <Download size={16} />
-            <span>Export CSV</span>
-          </button>
           <Link to="/upload" className="btn btn-primary">
             <UploadCloud size={16} />
             <span>Upload Asset</span>

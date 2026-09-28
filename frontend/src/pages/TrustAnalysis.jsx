@@ -57,10 +57,10 @@ export default function TrustAnalysis() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.25rem' }}>
         <div>
           <h1 style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-            Deep Trust Intelligence Analysis
+            Trust Analysis
           </h1>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            Multidimensional decision trust matrix and integrity factor evaluation.
+            Multi-factor trust score breakdown and integrity factor evaluation for digital assets.
           </p>
         </div>
 

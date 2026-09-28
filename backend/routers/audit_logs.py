@@ -1,10 +1,15 @@
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 
 from database import get_audit_logs_collection
 from schemas.common import ApiResponse
+from utils.security import require_admin_when_authenticated
 
-router = APIRouter(prefix="/api/audit-logs", tags=["Audit Logs"])
+router = APIRouter(
+    prefix="/api/audit-logs",
+    tags=["Audit Logs"],
+    dependencies=[Depends(require_admin_when_authenticated)]
+)
 
 
 @router.get("", response_model=ApiResponse[Dict[str, Any]])

@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authApi, getToken, removeToken } from '../utils/api';
 
 const AuthContext = createContext(null);
@@ -107,6 +107,10 @@ export function AuthProvider({ children }) {
     setOrganization(null);
   };
 
+  const isAdmin = Boolean(
+    user && ['ADMIN', 'SECURITY ADMINISTRATOR', 'SUPER_ADMIN'].includes((user.role || '').toUpperCase().trim())
+  );
+
   return (
     <AuthContext.Provider
       value={{
@@ -114,6 +118,7 @@ export function AuthProvider({ children }) {
         organization,
         loading,
         isAuthenticated: !!user,
+        isAdmin,
         registerOrganization,
         login,
         logout

@@ -1,25 +1,20 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  ShieldCheck, 
-  Layers, 
-  AlertTriangle, 
-  CheckCircle2, 
-  TrendingUp, 
-  ArrowRight, 
-  Clock, 
-  Eye, 
+import {
+  ShieldCheck,
+  Layers,
+  AlertTriangle,
+  CheckCircle2,
+  ArrowRight,
+  Eye,
   Building2,
   Activity,
   AlertCircle,
   Mail,
-  Sparkles,
-  Send,
-  RotateCw
+  UploadCloud
 } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
-import { useToast } from '../context/ToastContext';
-import { aiApi } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 import StatCard from '../components/common/StatCard';
 import TrustScoreBadge from '../components/common/TrustScoreBadge';
 import RiskBadge from '../components/common/RiskBadge';
@@ -28,79 +23,71 @@ import TrustTrendChart from '../components/charts/TrustTrendChart';
 import RiskDonutChart from '../components/charts/RiskDonutChart';
 import DepartmentBarChart from '../components/charts/DepartmentBarChart';
 
-const QUICK_AI_PROMPTS = [
-  "Which department has the highest risk?",
-  "Summarize open incidents",
-  "Why was this asset flagged?",
-  "What should the admin review first?"
-];
-
 export default function Dashboard() {
   const { assets, incidents, departments, auditLogs, metrics, loadError, refetch } = useSecurity();
-  const { addToast } = useToast();
+  const { isAdmin } = useAuth();
 
-  const [aiQuestion, setAiQuestion] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiAnswer, setAiAnswer] = useState(null);
-
-  // Top 5 recent incidents
   const recentIncidents = incidents.slice(0, 5);
 
-  // Recent 4 activities from audit logs
-  const recentActivities = auditLogs.slice(0, 4);
-
-  const handleAskAssistant = async (qText) => {
-    const query = (qText || aiQuestion).trim();
-    if (!query) return;
-    setAiLoading(true);
-    try {
-      const res = await aiApi.chat(query, 'dashboard', null);
-      if (res?.success && res?.data) {
-        setAiAnswer({ question: query, ...res.data });
-        if (!qText) setAiQuestion('');
-      }
-    } catch (err) {
-      addToast(`AI Assistant error: ${err.message}`, 'error');
-    } finally {
-      setAiLoading(false);
-    }
-  };
+  // Derive Recent Activity from audit logs (Admin) or recent verified assets (Employee fallback)
+  const recentActivities =
+    auditLogs.length > 0
+      ? auditLogs.slice(0, 5)
+      : assets.slice(0, 5).map((a) => ({
+          id: a.id,
+          action: 'ASSET_VERIFIED',
+          resource: a.name,
+          user: a.uploader || a.department,
+          details: `Trust Score ${a.trustScore}/100 (${a.risk} Risk)`,
+          timestamp: a.date,
+          result: a.risk === 'HIGH' || a.risk === 'CRITICAL' ? 'WARNING' : 'SUCCESS'
+        }));
 
   return (
     <div>
-      {/* Page Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
+      {/* Page Header — Single Clear Primary Action */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '1.75rem',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}
+      >
         <div>
           <h1 style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-            Enterprise Decision Trust Intelligence
+            Dashboard
           </h1>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            Real-time security telemetry, asset provenance verification, and operational risk metrics.
+            Organization trust score, verified digital assets, active incidents, and real-time security activity.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <Link to="/upload" className="btn btn-primary">
-            <Layers size={16} />
+            <UploadCloud size={16} />
             <span>Upload Asset</span>
-          </Link>
-          <Link to="/email-integration" className="btn btn-secondary">
-            <Mail size={16} />
-            <span>Email Intake</span>
-          </Link>
-          <Link to="/ai-assistant" className="btn btn-secondary">
-            <Sparkles size={16} />
-            <span>AI Assistant</span>
-          </Link>
-          <Link to="/digital-twin" className="btn btn-secondary">
-            <Activity size={16} />
-            <span>Digital Twin</span>
           </Link>
         </div>
       </div>
 
       {loadError && (
-        <div style={{ padding: '0.85rem 1.25rem', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 'var(--radius-md)', color: '#F87171', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+        <div
+          style={{
+            padding: '0.85rem 1.25rem',
+            background: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: 'var(--radius-md)',
+            color: '#F87171',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '1.5rem',
+            fontSize: '0.875rem'
+          }}
+        >
           <span>{loadError}</span>
           <button onClick={refetch} className="btn btn-secondary btn-sm" style={{ padding: '0.35rem 0.75rem' }}>
             Retry
@@ -108,150 +95,48 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Top 5 KPI Stat Cards */}
+      {/* Top 5 Summary Metrics */}
       <div className="grid-stats">
-        <StatCard 
-          title="Overall Trust Score" 
-          value={`${metrics.overallTrustScore} / 100`} 
-          subtitle="Enterprise Health Index"
+        <StatCard
+          title="Trust Score"
+          value={`${metrics.overallTrustScore} / 100`}
+          subtitle="Organization Trust Index"
           icon={ShieldCheck}
           accentColor="var(--trust-75)"
           statusBadge={<TrustScoreBadge score={metrics.overallTrustScore} showScore={false} size="sm" />}
         />
-        <StatCard 
-          title="Total Assets" 
-          value={metrics.totalAssets} 
-          subtitle="Monitored in registry"
-          icon={Layers}
+        <StatCard
+          title="Assets Verified"
+          value={metrics.verifiedAssets}
+          subtitle={`${metrics.totalAssets} total digital assets`}
+          icon={CheckCircle2}
           accentColor="var(--accent-cyan)"
-          trend="+8 this week"
-          trendPositive={true}
         />
-        <StatCard 
-          title="High Risk Assets" 
-          value={metrics.highRiskAssets} 
-          subtitle="Requires attention"
-          icon={AlertCircle}
-          accentColor="var(--trust-40)"
-          trend={metrics.highRiskAssets > 10 ? "Elevated" : "Normal"}
-          trendPositive={false}
-        />
-        <StatCard 
-          title="Open Incidents" 
-          value={metrics.openIncidents} 
-          subtitle="Active in triage queue"
+        <StatCard
+          title="Active Incidents"
+          value={metrics.openIncidents}
+          subtitle="Open & under investigation"
           icon={AlertTriangle}
           accentColor="var(--trust-0)"
         />
-        <StatCard 
-          title="Verified Assets" 
-          value={metrics.verifiedAssets} 
-          subtitle="Integrity confirmed"
-          icon={CheckCircle2}
+        <StatCard
+          title="Emails Verified"
+          value={metrics.emailsVerified || 0}
+          subtitle="Ingested via Gmail OAuth"
+          icon={Mail}
           accentColor="var(--trust-75)"
-          trend="88.3% compliance"
-          trendPositive={true}
         />
-      </div>
-
-      {/* Integrated TrustSphere AI Security Assistant Card */}
-      <div
-        className="glass-panel"
-        style={{
-          padding: '1.5rem',
-          marginBottom: '1.5rem',
-          border: '1px solid rgba(0, 240, 255, 0.28)',
-          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(6, 9, 17, 0.95))'
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <Sparkles size={19} color="var(--accent-cyan)" />
-            <div>
-              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                TrustSphere AI Security Assistant
-              </h3>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Ask analytical questions grounded in live MongoDB assets, incidents, and department risk (Groq • openai/gpt-oss-20b)
-              </span>
-            </div>
-          </div>
-          <Link to="/ai-assistant" style={{ fontSize: '0.78rem', color: 'var(--accent-cyan)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-            <span>Open Full AI Assistant</span>
-            <ArrowRight size={14} />
-          </Link>
-        </div>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.85rem' }}>
-          {QUICK_AI_PROMPTS.map((q, idx) => (
-            <button
-              key={idx}
-              type="button"
-              disabled={aiLoading}
-              onClick={() => handleAskAssistant(q)}
-              className="btn btn-secondary btn-sm"
-              style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem' }}
-            >
-              {q}
-            </button>
-          ))}
-        </div>
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleAskAssistant();
-          }}
-          style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}
-        >
-          <input
-            type="text"
-            className="input-field"
-            style={{ flex: 1, minWidth: '240px' }}
-            placeholder="Ask TrustSphere AI about department risk, open incidents, or flagged assets..."
-            value={aiQuestion}
-            onChange={(e) => setAiQuestion(e.target.value)}
-            disabled={aiLoading}
-          />
-          <button type="submit" className="btn btn-primary" disabled={aiLoading || !aiQuestion.trim()}>
-            {aiLoading ? <RotateCw size={15} className="animate-spin" /> : <Send size={15} />}
-            <span>{aiLoading ? 'Analyzing...' : 'Ask AI'}</span>
-          </button>
-        </form>
-
-        {aiAnswer && (
-          <div
-            style={{
-              marginTop: '1rem',
-              padding: '1rem 1.25rem',
-              backgroundColor: 'rgba(0, 240, 255, 0.05)',
-              borderRadius: 'var(--radius-sm)',
-              borderLeft: '4px solid var(--accent-cyan)'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>
-                Q: "{aiAnswer.question}"
-              </span>
-              <span className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                {aiAnswer.model_used || 'openai/gpt-oss-20b'} • Risk: {aiAnswer.risk_level}
-              </span>
-            </div>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-primary)', lineHeight: 1.5, margin: '0 0 0.6rem 0' }}>
-              {aiAnswer.summary}
-            </p>
-            {aiAnswer.recommendations && aiAnswer.recommendations.length > 0 && (
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                <strong style={{ color: '#34D399' }}>Recommended Next Steps:</strong> {aiAnswer.recommendations.join(' • ')}
-              </div>
-            )}
-          </div>
-        )}
+        <StatCard
+          title="High-Risk Items"
+          value={metrics.highRiskAssets}
+          subtitle="Flagged for security review"
+          icon={AlertCircle}
+          accentColor="var(--trust-40)"
+        />
       </div>
 
       {/* Main Charts Row */}
       <div className="grid-2col" style={{ marginBottom: '1.5rem' }}>
-        {/* Trust Score Trend */}
         <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <div>
@@ -259,12 +144,9 @@ export default function Dashboard() {
                 Trust Score Trend
               </h3>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                6-month trailing organizational integrity trajectory
+                6-month organizational trust trajectory
               </p>
             </div>
-            <span className="font-mono badge badge-trusted" style={{ fontSize: '0.7rem' }}>
-              +5% OVERALL GAIN
-            </span>
           </div>
 
           <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
@@ -272,7 +154,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Risk Distribution */}
         <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <div>
@@ -280,11 +161,21 @@ export default function Dashboard() {
                 Risk Distribution
               </h3>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                Multifactor threat categorization across all registered assets
+                Risk breakdown across all verified digital assets
               </p>
             </div>
-            <Link to="/assets" style={{ fontSize: '0.78rem', color: 'var(--accent-cyan)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-              <span>View details</span>
+            <Link
+              to="/assets"
+              style={{
+                fontSize: '0.78rem',
+                color: 'var(--accent-cyan)',
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem'
+              }}
+            >
+              <span>View Assets</span>
               <ArrowRight size={14} />
             </Link>
           </div>
@@ -295,20 +186,21 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Secondary Row: Department Trust & Activity Feed */}
+      {/* Secondary Row: Department Trust / Verified Assets & Recent Activity */}
       <div className="grid-2col" style={{ marginBottom: '1.5rem' }}>
-        {/* Department Trust */}
         <div className="glass-panel" style={{ padding: '1.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Building2 size={18} color="var(--accent-cyan)" />
               <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                Department Trust Benchmarks
+                Department Trust Overview
               </h3>
             </div>
-            <Link to="/departments" style={{ fontSize: '0.78rem', color: 'var(--accent-cyan)', textDecoration: 'none' }}>
-              All Departments →
-            </Link>
+            {isAdmin && (
+              <Link to="/departments" style={{ fontSize: '0.78rem', color: 'var(--accent-cyan)', textDecoration: 'none' }}>
+                All Departments →
+              </Link>
+            )}
           </div>
 
           <DepartmentBarChart departments={departments} />
@@ -320,52 +212,84 @@ export default function Dashboard() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Activity size={18} color="var(--accent-cyan)" />
               <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                Real-Time Security Activity
+                Recent Activity
               </h3>
             </div>
-            <Link to="/audit-logs" style={{ fontSize: '0.78rem', color: 'var(--accent-cyan)', textDecoration: 'none' }}>
-              Audit Trail →
-            </Link>
+            {isAdmin && (
+              <Link to="/audit-logs" style={{ fontSize: '0.78rem', color: 'var(--accent-cyan)', textDecoration: 'none' }}>
+                Audit Logs →
+              </Link>
+            )}
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-            {recentActivities.map((log) => (
-              <div 
-                key={log.id}
-                style={{
-                  padding: '0.75rem 0.9rem',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--border-subtle)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {log.action}: <span style={{ color: 'var(--accent-cyan)' }}>{log.resource}</span>
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                    by {log.user} • {log.details}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div className="font-mono" style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    {log.timestamp}
-                  </div>
-                  <span 
-                    style={{ 
-                      fontSize: '0.68rem', 
-                      color: log.result === 'SUCCESS' ? 'var(--trust-75)' : log.result === 'CRITICAL' ? 'var(--trust-0)' : 'var(--trust-60)',
-                      fontWeight: 600 
-                    }}
-                  >
-                    {log.result}
-                  </span>
-                </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {recentActivities.length === 0 ? (
+              <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.84rem' }}>
+                No recent activity recorded.
               </div>
-            ))}
+            ) : (
+              recentActivities.map((log) => (
+                <div
+                  key={log.id}
+                  style={{
+                    padding: '0.7rem 0.9rem',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '0.75rem'
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        color: 'var(--text-primary)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {log.action}: <span style={{ color: 'var(--accent-cyan)' }}>{log.resource}</span>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: '0.72rem',
+                        color: 'var(--text-muted)',
+                        marginTop: '0.15rem',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {log.user} • {log.details}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div className="font-mono" style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                      {log.timestamp}
+                    </div>
+                    <span
+                      style={{
+                        fontSize: '0.68rem',
+                        color:
+                          log.result === 'SUCCESS'
+                            ? 'var(--trust-75)'
+                            : log.result === 'CRITICAL'
+                            ? 'var(--trust-0)'
+                            : 'var(--trust-60)',
+                        fontWeight: 600
+                      }}
+                    >
+                      {log.result}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -375,10 +299,10 @@ export default function Dashboard() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
           <div>
             <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Recent Security Incidents
+              Recent Incidents
             </h3>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              Latest anomalous events flagged across enterprise digital assets
+              Latest security incidents flagged across digital assets
             </p>
           </div>
           <Link to="/incidents" className="btn btn-secondary btn-sm">
@@ -404,7 +328,11 @@ export default function Dashboard() {
               {recentIncidents.map((inc) => (
                 <tr key={inc.id}>
                   <td>
-                    <Link to={`/incidents/${inc.id}`} className="font-mono" style={{ color: 'var(--accent-cyan)', fontWeight: 600, textDecoration: 'none' }}>
+                    <Link
+                      to={`/incidents/${inc.id}`}
+                      className="font-mono"
+                      style={{ color: 'var(--accent-cyan)', fontWeight: 600, textDecoration: 'none' }}
+                    >
                       {inc.id}
                     </Link>
                   </td>

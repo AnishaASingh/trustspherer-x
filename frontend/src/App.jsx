@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider } from './context/AuthContext';
 import { SecurityProvider } from './context/SecurityContext';
@@ -34,13 +35,14 @@ import AIAssistant from './pages/AIAssistant';
 export default function App() {
   return (
     <BrowserRouter>
-      <ToastProvider>
-        <AuthProvider>
-          <SecurityProvider>
+      <ThemeProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <SecurityProvider>
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<Landing />} />
-              <Route path="/register" element={<Register />} />
+              <Route path="/register" element={<Navigate to="/login" replace />} />
               <Route path="/login" element={<Login />} />
 
               {/* Protected Application Routes */}
@@ -55,28 +57,31 @@ export default function App() {
                 <Route path="/assets" element={<Assets />} />
                 <Route path="/assets/:id" element={<AssetDetails />} />
                 <Route path="/upload" element={<UploadAsset />} />
-                <Route path="/email-integration" element={<EmailIntegration />} />
-                <Route path="/ai-assistant" element={<AIAssistant />} />
                 <Route path="/trust-analysis" element={<TrustAnalysis />} />
                 <Route path="/incidents" element={<Incidents />} />
                 <Route path="/incidents/:id" element={<IncidentDetails />} />
-                <Route path="/employees" element={<Employees />} />
-                <Route path="/employees/:id" element={<EmployeeDetails />} />
-                <Route path="/departments" element={<Departments />} />
-                <Route path="/departments/:id" element={<DepartmentDetails />} />
-                <Route path="/digital-twin" element={<DigitalTwin />} />
-                <Route path="/audit-logs" element={<AuditLogs />} />
-                <Route path="/reports" element={<Reports />} />
                 <Route path="/settings" element={<Settings />} />
-                <Route path="/users" element={<UserManagement />} />
+                <Route path="/ai-assistant" element={<AIAssistant />} />
+
+                {/* Admin-Only Routes */}
+                <Route path="/email-integration" element={<ProtectedRoute adminOnly><EmailIntegration /></ProtectedRoute>} />
+                <Route path="/employees" element={<ProtectedRoute adminOnly><Employees /></ProtectedRoute>} />
+                <Route path="/employees/:id" element={<ProtectedRoute adminOnly><EmployeeDetails /></ProtectedRoute>} />
+                <Route path="/departments" element={<ProtectedRoute adminOnly><Departments /></ProtectedRoute>} />
+                <Route path="/departments/:id" element={<ProtectedRoute adminOnly><DepartmentDetails /></ProtectedRoute>} />
+                <Route path="/digital-twin" element={<ProtectedRoute adminOnly><DigitalTwin /></ProtectedRoute>} />
+                <Route path="/audit-logs" element={<ProtectedRoute adminOnly><AuditLogs /></ProtectedRoute>} />
+                <Route path="/reports" element={<ProtectedRoute adminOnly><Reports /></ProtectedRoute>} />
+                <Route path="/users" element={<ProtectedRoute adminOnly><UserManagement /></ProtectedRoute>} />
               </Route>
 
               {/* Catch-all redirect */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
-          </SecurityProvider>
-        </AuthProvider>
-      </ToastProvider>
+            </SecurityProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

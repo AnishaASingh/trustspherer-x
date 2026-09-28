@@ -183,7 +183,7 @@ export function mapBackendAuditLog(l) {
 // ============================================================
 
 export function SecurityProvider({ children }) {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { addToast } = useToast();
 
   const [assets, setAssets] = useState([]);
@@ -198,50 +198,57 @@ export function SecurityProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
-  // Fetch complete real-time data from FastAPI and MongoDB
+  // Fetch complete real-time data from FastAPI and MongoDB (resilient to role-restricted endpoints)
   const fetchAllSecurityData = async () => {
     setIsLoading(true);
     setLoadError(null);
 
     try {
-      const [
-        assetsRes,
-        incidentsRes,
-        employeesRes,
-        departmentsRes,
-        auditLogsRes,
-        metricsRes
-      ] = await Promise.all([
+      const canFetchAdmin = !user || isAdmin;
+      const results = await Promise.allSettled([
         assetsApi.getAssets({ limit: 100 }),
         incidentsApi.getIncidents({ limit: 100 }),
-        employeesApi.getEmployees({ limit: 100 }),
-        departmentsApi.getDepartments(),
-        auditLogsApi.getAuditLogs({ limit: 100 }),
+        canFetchAdmin ? employeesApi.getEmployees({ limit: 100 }) : Promise.resolve(null),
+        canFetchAdmin ? departmentsApi.getDepartments() : Promise.resolve(null),
+        canFetchAdmin ? auditLogsApi.getAuditLogs({ limit: 100 }) : Promise.resolve(null),
         dashboardApi.getDashboardMetrics()
       ]);
 
-      if (assetsRes?.data?.assets) {
-        setAssets(assetsRes.data.assets.map(mapBackendAsset));
+      const [
+        assetsOut,
+        incidentsOut,
+        employeesOut,
+        departmentsOut,
+        auditLogsOut,
+        metricsOut
+      ] = results.map(r => (r.status === 'fulfilled' ? r.value : null));
+
+      if (assetsOut?.data?.assets) {
+        setAssets(assetsOut.data.assets.map(mapBackendAsset));
       }
 
-      if (incidentsRes?.data?.incidents) {
-        setIncidents(incidentsRes.data.incidents.map(mapBackendIncident));
+      if (incidentsOut?.data?.incidents) {
+        setIncidents(incidentsOut.data.incidents.map(mapBackendIncident));
       }
 
-      if (employeesRes?.data?.employees) {
-        setEmployees(employeesRes.data.employees.map(mapBackendEmployee));
+      if (employeesOut?.data?.employees) {
+        setEmployees(employeesOut.data.employees.map(mapBackendEmployee));
+      } else if (!canFetchAdmin) {
+        setEmployees([]);
       }
 
-      if (departmentsRes?.data?.departments) {
-        setDepartments(departmentsRes.data.departments.map(mapBackendDepartment));
+      if (departmentsOut?.data?.departments) {
+        setDepartments(departmentsOut.data.departments.map(mapBackendDepartment));
       }
 
-      if (auditLogsRes?.data?.audit_logs) {
-        setAuditLogs(auditLogsRes.data.audit_logs.map(mapBackendAuditLog));
+      if (auditLogsOut?.data?.audit_logs) {
+        setAuditLogs(auditLogsOut.data.audit_logs.map(mapBackendAuditLog));
+      } else if (!canFetchAdmin) {
+        setAuditLogs([]);
       }
 
-      if (metricsRes?.data) {
-        setBackendMetrics(metricsRes.data);
+      if (metricsOut?.data) {
+        setBackendMetrics(metricsOut.data);
       }
 
       setIsDataLoaded(true);
@@ -255,10 +262,10 @@ export function SecurityProvider({ children }) {
     }
   };
 
-  // Initial load on application mount
+  // Initial load on application mount and when authenticated user changes
   useEffect(() => {
     fetchAllSecurityData();
-  }, []);
+  }, [user?.email, user?.role]);
 
   // System activity logger
   const logActivity = (action, resource, details = '', result = 'SUCCESS', resourceId = null) => {
@@ -399,7 +406,10 @@ export function SecurityProvider({ children }) {
         email: empData.email,
         department_id: empData.department,
         role: empData.role || 'Security Analyst',
-        status: 'ACTIVE'
+        status: empData.status || 'ACTIVE',
+        trust_score: empData.trustScore !== undefined ? Number(empData.trustScore) : 88,
+        password: empData.password || undefined,
+        access_role: empData.access_role || 'EMPLOYEE'
       };
 
       const res = await employeesApi.createEmployee(payload);
@@ -407,11 +417,54 @@ export function SecurityProvider({ children }) {
         const mapped = mapBackendEmployee(res.data);
         setEmployees(prev => [mapped, ...prev]);
         addToast(`Employee ${mapped.name} added successfully.`, 'success');
+        if (isAdmin) {
+          auditLogsApi.getAuditLogs({ limit: 100 })
+            .then(al => al?.data?.audit_logs && setAuditLogs(al.data.audit_logs.map(mapBackendAuditLog)))
+            .catch(() => {});
+        }
         return mapped;
       }
       throw new Error(res?.message || 'Failed to register employee');
     } catch (err) {
       addToast(`Error adding employee: ${err.message}`, 'error');
+      throw err;
+    }
+  };
+
+  // Real employee update: PATCH /api/employees/{id}
+  const updateEmployee = async (employeeId, empUpdates) => {
+    try {
+      const cleanName = empUpdates.name ? empUpdates.name.trim() : undefined;
+      const parts = cleanName ? cleanName.split(' ') : [];
+      const first_name = cleanName ? (parts[0] || 'Staff') : undefined;
+      const last_name = cleanName ? (parts.slice(1).join(' ') || '') : undefined;
+
+      const payload = {
+        ...(cleanName ? { name: cleanName, first_name, last_name } : {}),
+        ...(empUpdates.email !== undefined ? { email: empUpdates.email } : {}),
+        ...((empUpdates.department || empUpdates.department_id) ? { department_id: empUpdates.department || empUpdates.department_id } : {}),
+        ...(empUpdates.role !== undefined ? { role: empUpdates.role } : {}),
+        ...(empUpdates.status !== undefined ? { status: empUpdates.status } : {}),
+        ...(empUpdates.trustScore !== undefined ? { trust_score: Number(empUpdates.trustScore) } : {}),
+        ...(empUpdates.password ? { password: empUpdates.password } : {}),
+        ...(empUpdates.access_role ? { access_role: empUpdates.access_role } : {})
+      };
+
+      const res = await employeesApi.updateEmployee(employeeId, payload);
+      if (res?.success && res?.data) {
+        const mapped = mapBackendEmployee(res.data);
+        setEmployees(prev => prev.map(e => (e.id === employeeId || e.employee_id === employeeId) ? mapped : e));
+        addToast(`Employee ${mapped.name} updated successfully.`, 'success');
+        if (isAdmin) {
+          auditLogsApi.getAuditLogs({ limit: 100 })
+            .then(al => al?.data?.audit_logs && setAuditLogs(al.data.audit_logs.map(mapBackendAuditLog)))
+            .catch(() => {});
+        }
+        return mapped;
+      }
+      throw new Error(res?.message || 'Failed to update employee');
+    } catch (err) {
+      addToast(`Error updating employee: ${err.message}`, 'error');
       throw err;
     }
   };
@@ -428,6 +481,10 @@ export function SecurityProvider({ children }) {
 
   // Dynamic Dashboard and Platform Metrics derived from MongoDB
   const metrics = useMemo(() => {
+    const emailsVerifiedCount = assets.filter(
+      a => !a.is_demo && (a.email_metadata || (a.source || '').toLowerCase().includes('gmail') || (a.source || '').toLowerCase().includes('email'))
+    ).length;
+
     if (backendMetrics) {
       return {
         overallTrustScore: Math.round(backendMetrics.average_trust_score || 0),
@@ -435,6 +492,7 @@ export function SecurityProvider({ children }) {
         verifiedAssets: (backendMetrics.low_risk_assets || 0) + (backendMetrics.medium_risk_assets || 0),
         highRiskAssets: (backendMetrics.high_risk_assets || 0) + (backendMetrics.critical_incidents || 0),
         openIncidents: backendMetrics.open_incidents ?? incidents.filter(i => i.status === 'OPEN' || i.status === 'UNDER INVESTIGATION').length,
+        emailsVerified: emailsVerifiedCount,
         riskCounts: backendMetrics.risk_distribution || {
           LOW: assets.filter(a => a.risk === 'LOW').length,
           MEDIUM: assets.filter(a => a.risk === 'MEDIUM').length,
@@ -457,6 +515,7 @@ export function SecurityProvider({ children }) {
       verifiedAssets: assets.filter(a => a.status === 'VERIFIED').length,
       highRiskAssets,
       openIncidents,
+      emailsVerified: emailsVerifiedCount,
       riskCounts: {
         LOW: assets.filter(a => a.risk === 'LOW').length,
         MEDIUM: assets.filter(a => a.risk === 'MEDIUM').length,
@@ -483,6 +542,7 @@ export function SecurityProvider({ children }) {
         uploadAndAnalyzeAsset,
         updateIncidentStatus,
         addEmployee,
+        updateEmployee,
         markNotificationRead,
         markAllNotificationsRead,
         logActivity

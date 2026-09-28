@@ -1,12 +1,17 @@
 import os
+import sys
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 from pymongo import MongoClient, ASCENDING, DESCENDING
 from pymongo.database import Database
 from pymongo.errors import ConnectionFailure, PyMongoError
 
-# Load environment variables from .env
-load_dotenv()
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
+
+# Load environment variables from backend/.env
+load_dotenv(os.path.join(BACKEND_DIR, ".env"))
 
 # ============================================================
 # CONFIGURATION VIA ENVIRONMENT VARIABLES

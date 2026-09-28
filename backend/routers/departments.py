@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from bson import ObjectId
 
 from database import (
@@ -12,8 +12,13 @@ from database import (
 from schemas.departments import DepartmentCreateRequest, DepartmentUpdateRequest, DepartmentResponse
 from schemas.common import ApiResponse, ApiErrorResponse
 from utils.audit import record_audit_log
+from utils.security import require_admin_when_authenticated
 
-router = APIRouter(prefix="/api/departments", tags=["Departments"])
+router = APIRouter(
+    prefix="/api/departments",
+    tags=["Departments"],
+    dependencies=[Depends(require_admin_when_authenticated)]
+)
 
 
 @router.get("", response_model=ApiResponse[Dict[str, Any]])

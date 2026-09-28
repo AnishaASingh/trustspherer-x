@@ -40,7 +40,7 @@ export function ToastProvider({ children }) {
         }}
       >
         {toasts.map((toast) => {
-          let bg = 'rgba(15, 23, 42, 0.95)';
+          let bg = 'var(--bg-card)';
           let borderColor = 'var(--border-subtle)';
           let icon = <Info size={18} color="var(--accent-cyan)" />;
 
@@ -63,12 +63,12 @@ export function ToastProvider({ children }) {
                 background: bg,
                 backdropFilter: 'blur(12px)',
                 borderLeft: `4px solid ${borderColor}`,
-                borderTop: '1px solid rgba(255,255,255,0.08)',
-                borderRight: '1px solid rgba(255,255,255,0.08)',
-                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                borderTop: '1px solid var(--border-subtle)',
+                borderRight: '1px solid var(--border-subtle)',
+                borderBottom: '1px solid var(--border-subtle)',
                 borderRadius: '8px',
                 padding: '12px 16px',
-                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.6)',
+                boxShadow: 'var(--shadow-card)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',

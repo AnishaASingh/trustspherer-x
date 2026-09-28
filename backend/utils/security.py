@@ -8,7 +8,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 
 # ============================================================
 # SECURITY CONFIGURATION
@@ -145,20 +145,26 @@ def get_current_user(
     return user
 
 
+def is_admin_user(user: Optional[Dict[str, Any]]) -> bool:
+    """Returns True if the user document has an administrative role."""
+    if not user:
+        return False
+    user_role = str(user.get("role", "")).strip().upper()
+    return user_role in ("ADMIN", "SECURITY ADMINISTRATOR", "SUPER_ADMIN")
+
+
 def require_admin(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """
     Authorization dependency that ensures the requesting user has the ADMIN role.
     """
-    user_role = str(current_user.get("role", "")).strip().upper()
-    if user_role != "ADMIN":
+    if not is_admin_user(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Administrative privileges required to access this resource."
         )
     return current_user
-
 
 
 def get_optional_user(
@@ -188,3 +194,18 @@ def get_optional_user(
             del user["password_hash"]
         return user
     return None
+
+
+def require_admin_when_authenticated(
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_user)
+) -> Optional[Dict[str, Any]]:
+    """
+    Enforces ADMIN role when an Authorization Bearer token is present (blocks EMPLOYEE access with 403 Forbidden).
+    """
+    if current_user is not None and not is_admin_user(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrative privileges required to access this resource."
+        )
+    return current_user
+

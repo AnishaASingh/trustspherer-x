@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 import uuid
 import asyncio
@@ -6,13 +7,20 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
 
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
+existing_pythonpath = os.environ.get("PYTHONPATH", "")
+if BACKEND_DIR not in existing_pythonpath.split(os.pathsep):
+    os.environ["PYTHONPATH"] = f"{BACKEND_DIR}{os.pathsep}{existing_pythonpath}" if existing_pythonpath else BACKEND_DIR
+
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(os.path.join(BACKEND_DIR, ".env"))
 
 # Database helpers and collections
 from database import (
@@ -307,9 +315,11 @@ async def verify_document(
 
 if __name__ == "__main__":
     import uvicorn
+    os.chdir(BACKEND_DIR)
     uvicorn.run(
         "main:app",
         host="127.0.0.1",
         port=8000,
-        reload=True
+        reload=True,
+        reload_dirs=[BACKEND_DIR]
     )
