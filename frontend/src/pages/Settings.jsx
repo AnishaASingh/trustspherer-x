@@ -16,7 +16,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Storage } from '../utils/storage';
 
 export default function Settings() {
-  const { user, organization } = useAuth();
+  const { user, organization, isAdmin } = useAuth();
   const { addToast } = useToast();
   const { theme, setTheme } = useTheme();
 
@@ -49,6 +49,7 @@ export default function Settings() {
 
   const handleSaveOrg = (e) => {
     e.preventDefault();
+    if (!isAdmin) return;
     addToast("Organization parameters updated.", "success");
   };
 
@@ -98,7 +99,7 @@ export default function Settings() {
       >
         {[
           { id: 'profile', label: 'Operator Profile', icon: User },
-          { id: 'org', label: 'Organization Details', icon: Building2 },
+          ...(isAdmin ? [{ id: 'org', label: 'Organization Details', icon: Building2 }] : []),
           { id: 'security', label: 'Security & Access', icon: Lock },
           { id: 'appearance', label: 'Theme & Appearance', icon: Palette },
         ].map((tab) => {

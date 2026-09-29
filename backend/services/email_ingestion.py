@@ -234,13 +234,20 @@ def initiate_gmail_oauth_connect(organization_id: str = DEFAULT_ORG_ID) -> Dict[
     state_token = f"ts-oauth-{secrets.token_urlsafe(24)}"
     now_iso = datetime.datetime.utcnow().isoformat()
 
-    # Persist state token in MongoDB to validate callback and prevent CSRF
+    # Persist state token in MongoDB to validate callback and prevent CSRF (keep recent states so multi-tab retries succeed)
     col = get_email_integrations_collection()
+    existing_doc = col.find_one({"organization_id": organization_id, "provider": "gmail"}) or {}
+    recent_states = list(existing_doc.get("pending_oauth_states") or [])
+    if existing_doc.get("pending_oauth_state") and existing_doc["pending_oauth_state"] not in recent_states:
+        recent_states.append(existing_doc["pending_oauth_state"])
+    recent_states = (recent_states + [state_token])[-10:]
+
     col.update_one(
         {"organization_id": organization_id, "provider": "gmail"},
         {
             "$set": {
                 "pending_oauth_state": state_token,
+                "pending_oauth_states": recent_states,
                 "pending_oauth_state_at": now_iso,
                 "updated_at": now_iso
             }
@@ -334,7 +341,12 @@ def complete_gmail_oauth_callback(
 
     # 3. Validate OAuth state parameter to protect authorization flow
     expected_state = doc.get("pending_oauth_state")
-    if not state or not expected_state or not secrets.compare_digest(str(state), str(expected_state)):
+    allowed_states = set(doc.get("pending_oauth_states") or [])
+    if expected_state:
+        allowed_states.add(str(expected_state))
+
+    state_matched = bool(state and any(secrets.compare_digest(str(state), s) for s in allowed_states))
+    if not state_matched:
         record_audit_log(
             action="EMAIL_OAUTH_FAILED",
             entity_type="EMAIL_INTEGRATION",
@@ -349,12 +361,12 @@ def complete_gmail_oauth_callback(
             "message": "Invalid or expired OAuth state token. Please click 'Connect Gmail' and try again."
         }
 
-    # Check state expiration (15 minutes max)
+    # Check state expiration (60 minutes max)
     state_at_str = doc.get("pending_oauth_state_at")
     if state_at_str:
         try:
             state_at = datetime.datetime.fromisoformat(state_at_str)
-            if (now_utc - state_at).total_seconds() > 900:
+            if (now_utc - state_at).total_seconds() > 3600:
                 return {
                     "success": False,
                     "error_code": "expired_state",

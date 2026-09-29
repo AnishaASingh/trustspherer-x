@@ -90,6 +90,19 @@ async function request(endpoint, options = {}) {
 // 1. AUTHENTICATION API
 // ============================================================
 export const authApi = {
+  getSetupStatus: async () => {
+    return await request('/auth/setup-status', {
+      method: 'GET'
+    });
+  },
+
+  completeSetup: async (setupData) => {
+    return await request('/auth/setup', {
+      method: 'POST',
+      body: JSON.stringify(setupData)
+    });
+  },
+
   register: async (userData) => {
     return await request('/auth/register', {
       method: 'POST',

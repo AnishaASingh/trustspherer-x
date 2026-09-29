@@ -197,11 +197,15 @@ def get_employee_details(
 
     emp["associated_assets"] = associated_assets
     emp["related_incidents"] = associated_incidents
-    emp["permissions"] = (
-        ["Full Platform Governance", "All Modules"]
-        if str(emp.get("access_role", "EMPLOYEE")).upper() == "ADMIN"
-        else ["Dashboard", "Digital Assets", "Trust Analysis", "Incidents", "Settings"]
-    )
+    role_upper = str(emp.get("access_role", "EMPLOYEE")).upper()
+    if role_upper == "ADMIN":
+        emp["permissions"] = ["Full Platform Governance", "All Modules", "User & Employee Provisioning", "Email & OAuth Integration"]
+    elif role_upper == "MANAGER":
+        emp["permissions"] = ["Department Overview", "Digital Assets & Verification", "Trust Analysis", "Incidents & AI Triage"]
+    elif role_upper == "AUDITOR":
+        emp["permissions"] = ["Audit Logs (Read-Only)", "Reports & Compliance", "Digital Assets", "Trust Analysis", "Incidents"]
+    else:
+        emp["permissions"] = ["Dashboard", "Digital Assets", "Trust Analysis", "Incidents", "Settings"]
 
     return ApiResponse(success=True, data={"employee": emp})
 

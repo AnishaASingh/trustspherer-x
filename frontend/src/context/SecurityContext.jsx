@@ -165,7 +165,7 @@ export function mapBackendAuditLog(l) {
 // ============================================================
 
 export function SecurityProvider({ children }) {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isAuditor } = useAuth();
   const { addToast } = useToast();
 
   const [assets, setAssets] = useState([]);
@@ -187,12 +187,13 @@ export function SecurityProvider({ children }) {
 
     try {
       const canFetchAdmin = !user || isAdmin;
+      const canFetchAudit = !user || isAdmin || isAuditor;
       const results = await Promise.allSettled([
         assetsApi.getAssets({ limit: 100 }),
         incidentsApi.getIncidents({ limit: 100 }),
         canFetchAdmin ? employeesApi.getEmployees({ limit: 100 }) : Promise.resolve(null),
         canFetchAdmin ? departmentsApi.getDepartments() : Promise.resolve(null),
-        canFetchAdmin ? auditLogsApi.getAuditLogs({ limit: 100 }) : Promise.resolve(null),
+        canFetchAudit ? auditLogsApi.getAuditLogs({ limit: 100 }) : Promise.resolve(null),
         dashboardApi.getDashboardMetrics()
       ]);
 
@@ -225,7 +226,7 @@ export function SecurityProvider({ children }) {
 
       if (auditLogsOut?.data?.audit_logs) {
         setAuditLogs(auditLogsOut.data.audit_logs.map(mapBackendAuditLog));
-      } else if (!canFetchAdmin) {
+      } else if (!canFetchAudit) {
         setAuditLogs([]);
       }
 

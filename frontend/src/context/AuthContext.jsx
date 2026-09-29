@@ -23,8 +23,8 @@ export function AuthProvider({ children }) {
           const userData = res.data;
           setUser(userData);
           setOrganization({
-            id: userData.id || 'ORG-ENTERPRISE',
-            name: 'TrustSphere Enterprise',
+            id: userData.organization_id || userData.id || 'ORG-TS-01',
+            name: userData.organization_name || 'TrustSphere Enterprise',
             email: userData.email,
             role: userData.role
           });
@@ -55,25 +55,29 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('trustsphere:unauthorized', handleUnauthorized);
   }, []);
 
-  // Real backend user/organization registration: POST /api/auth/register
-  const registerOrganization = async (regData) => {
+  // One-time initial organization setup: POST /api/auth/setup
+  const completeOrganizationSetup = async (setupData) => {
     try {
       const payload = {
-        name: regData.adminName || regData.name,
-        email: regData.adminEmail || regData.email,
-        password: regData.password,
-        role: "Security Administrator"
+        organization_name: (setupData.organizationName || setupData.organization_name || '').trim(),
+        organization_id: (setupData.organizationId || setupData.organization_id || '').trim().toUpperCase(),
+        admin_name: (setupData.adminName || setupData.admin_name || setupData.name || '').trim(),
+        admin_email: (setupData.adminEmail || setupData.admin_email || setupData.email || '').trim().toLowerCase(),
+        password: setupData.password
       };
 
-      const res = await authApi.register(payload);
+      const res = await authApi.completeSetup(payload);
       if (res?.success) {
-        return { success: true, data: res.data };
+        return { success: true, data: res.data, message: res.message };
       }
-      return { success: false, message: res?.message || 'Registration failed.' };
+      return { success: false, message: res?.message || 'Organization setup failed.' };
     } catch (err) {
-      return { success: false, message: err.message || 'Registration failed.' };
+      return { success: false, message: err.message || 'Organization setup failed.' };
     }
   };
+
+  // Backwards-compatible alias for setup page
+  const registerOrganization = completeOrganizationSetup;
 
   // Real backend login: POST /api/auth/login
   const login = async (email, password) => {
@@ -87,8 +91,8 @@ export function AuthProvider({ children }) {
         const userData = res.data.user;
         setUser(userData);
         setOrganization({
-          id: userData.id || 'ORG-ENTERPRISE',
-          name: 'TrustSphere Enterprise',
+          id: userData.organization_id || userData.id || 'ORG-TS-01',
+          name: userData.organization_name || 'TrustSphere Enterprise',
           email: userData.email,
           role: userData.role
         });
@@ -107,9 +111,17 @@ export function AuthProvider({ children }) {
     setOrganization(null);
   };
 
+  const normalizedRole = (user?.role || '').toUpperCase().trim();
   const isAdmin = Boolean(
-    user && ['ADMIN', 'SECURITY ADMINISTRATOR', 'SUPER_ADMIN'].includes((user.role || '').toUpperCase().trim())
+    user && ['ADMIN', 'SECURITY ADMINISTRATOR', 'SUPER_ADMIN'].includes(normalizedRole)
   );
+  const isManager = Boolean(
+    user && ['MANAGER', 'DEPARTMENT LEAD', 'AUTHORIZED USER'].includes(normalizedRole)
+  );
+  const isAuditor = Boolean(
+    user && ['AUDITOR', 'COMPLIANCE AUDITOR'].includes(normalizedRole)
+  );
+  const isEmployee = Boolean(user && !isAdmin && !isManager && !isAuditor);
 
   return (
     <AuthContext.Provider
@@ -119,6 +131,10 @@ export function AuthProvider({ children }) {
         loading,
         isAuthenticated: !!user,
         isAdmin,
+        isManager,
+        isAuditor,
+        isEmployee,
+        completeOrganizationSetup,
         registerOrganization,
         login,
         logout

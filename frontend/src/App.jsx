@@ -42,6 +42,7 @@ export default function App() {
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<Landing />} />
+              <Route path="/setup" element={<Register />} />
               <Route path="/register" element={<Navigate to="/login" replace />} />
               <Route path="/login" element={<Login />} />
 
@@ -63,15 +64,15 @@ export default function App() {
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/ai-assistant" element={<AIAssistant />} />
 
-                {/* Admin-Only Routes */}
+                {/* Admin & Auditor Routes */}
                 <Route path="/email-integration" element={<ProtectedRoute adminOnly><EmailIntegration /></ProtectedRoute>} />
                 <Route path="/employees" element={<ProtectedRoute adminOnly><Employees /></ProtectedRoute>} />
                 <Route path="/employees/:id" element={<ProtectedRoute adminOnly><EmployeeDetails /></ProtectedRoute>} />
                 <Route path="/departments" element={<ProtectedRoute adminOnly><Departments /></ProtectedRoute>} />
                 <Route path="/departments/:id" element={<ProtectedRoute adminOnly><DepartmentDetails /></ProtectedRoute>} />
                 <Route path="/digital-twin" element={<ProtectedRoute adminOnly><DigitalTwin /></ProtectedRoute>} />
-                <Route path="/audit-logs" element={<ProtectedRoute adminOnly><AuditLogs /></ProtectedRoute>} />
-                <Route path="/reports" element={<ProtectedRoute adminOnly><Reports /></ProtectedRoute>} />
+                <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['ADMIN', 'AUDITOR']}><AuditLogs /></ProtectedRoute>} />
+                <Route path="/reports" element={<ProtectedRoute allowedRoles={['ADMIN', 'AUDITOR']}><Reports /></ProtectedRoute>} />
                 <Route path="/users" element={<ProtectedRoute adminOnly><UserManagement /></ProtectedRoute>} />
               </Route>
 

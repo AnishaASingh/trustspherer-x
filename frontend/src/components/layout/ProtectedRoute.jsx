@@ -3,8 +3,8 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import SkeletonLoader from '../common/SkeletonLoader';
 
-export default function ProtectedRoute({ children, adminOnly = false }) {
-  const { isAuthenticated, isAdmin, loading } = useAuth();
+export default function ProtectedRoute({ children, adminOnly = false, allowedRoles = null }) {
+  const { user, isAuthenticated, isAdmin, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -19,7 +19,15 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (adminOnly && !isAdmin) {
+  if (Array.isArray(allowedRoles) && allowedRoles.length > 0) {
+    const userRoleUpper = (user?.role || '').toUpperCase().trim();
+    const hasAllowedRole =
+      (allowedRoles.includes('ADMIN') && isAdmin) ||
+      allowedRoles.map((r) => r.toUpperCase()).includes(userRoleUpper);
+    if (!hasAllowedRole) {
+      return <Navigate to="/dashboard" replace />;
+    }
+  } else if (adminOnly && !isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
 

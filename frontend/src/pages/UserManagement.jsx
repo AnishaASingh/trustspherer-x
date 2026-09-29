@@ -28,11 +28,11 @@ import EmptyState from '../components/common/EmptyState';
 
 const SYSTEM_ROLES = [
   "ADMIN",
+  "MANAGER",
+  "EMPLOYEE",
+  "AUDITOR",
   "Security Administrator",
-  "Security Analyst",
-  "Auditor",
-  "Department Lead",
-  "Operator"
+  "Security Analyst"
 ];
 
 const DEPARTMENTS = [

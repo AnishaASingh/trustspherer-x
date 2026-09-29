@@ -145,12 +145,40 @@ def get_current_user(
     return user
 
 
+def normalize_user_role(raw_role: Optional[str]) -> str:
+    """
+    Normalizes any user role string into one of the four canonical TrustSphere roles:
+    ADMIN, MANAGER, AUDITOR, or EMPLOYEE.
+    """
+    r = str(raw_role or "").strip().upper()
+    if r in ("ADMIN", "SECURITY ADMINISTRATOR", "SUPER_ADMIN"):
+        return "ADMIN"
+    if r in ("MANAGER", "DEPARTMENT LEAD", "AUTHORIZED USER"):
+        return "MANAGER"
+    if r in ("AUDITOR", "COMPLIANCE AUDITOR"):
+        return "AUDITOR"
+    return "EMPLOYEE"
+
+
 def is_admin_user(user: Optional[Dict[str, Any]]) -> bool:
     """Returns True if the user document has an administrative role."""
     if not user:
         return False
-    user_role = str(user.get("role", "")).strip().upper()
-    return user_role in ("ADMIN", "SECURITY ADMINISTRATOR", "SUPER_ADMIN")
+    return normalize_user_role(user.get("role")) == "ADMIN"
+
+
+def is_manager_or_admin(user: Optional[Dict[str, Any]]) -> bool:
+    """Returns True if the user document has ADMIN or MANAGER privileges."""
+    if not user:
+        return False
+    return normalize_user_role(user.get("role")) in ("ADMIN", "MANAGER")
+
+
+def is_auditor_or_admin(user: Optional[Dict[str, Any]]) -> bool:
+    """Returns True if the user document has ADMIN or AUDITOR privileges."""
+    if not user:
+        return False
+    return normalize_user_role(user.get("role")) in ("ADMIN", "AUDITOR")
 
 
 def require_admin(
@@ -171,7 +199,9 @@ def get_optional_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_bearer)
 ) -> Optional[Dict[str, Any]]:
     """
-    Optional authentication dependency for endpoints that work both authenticated and public.
+    Optional authentication dependency:
+    - If no Authorization header is sent, returns None.
+    - If an Authorization Bearer token IS sent, validates it and returns the user (or raises 401/403).
     """
     from database import get_users_collection
 
@@ -180,27 +210,46 @@ def get_optional_user(
 
     payload = decode_access_token(credentials.credentials)
     if not payload:
-        return None
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
 
     email = payload.get("sub") or payload.get("email")
     if not email:
-        return None
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token payload missing subject identifier.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
 
     users_col = get_users_collection()
-    user = users_col.find_one({"email": email})
-    if user:
-        user["_id"] = str(user["_id"])
-        if "password_hash" in user:
-            del user["password_hash"]
-        return user
-    return None
+    user = users_col.find_one({"email": {"$regex": f"^{email}$", "$options": "i"}})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User associated with token no longer exists.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    if user.get("is_active") is False or str(user.get("status", "")).upper() == "INACTIVE":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account has been deactivated. Please contact an administrator."
+        )
+
+    user["_id"] = str(user["_id"])
+    if "password_hash" in user:
+        del user["password_hash"]
+    return user
 
 
 def require_admin_when_authenticated(
     current_user: Optional[Dict[str, Any]] = Depends(get_optional_user)
 ) -> Optional[Dict[str, Any]]:
     """
-    Enforces ADMIN role when an Authorization Bearer token is present (blocks EMPLOYEE access with 403 Forbidden).
+    Enforces ADMIN role when an Authorization Bearer token is present (blocks EMPLOYEE, MANAGER, and AUDITOR access with 403 Forbidden).
     """
     if current_user is not None and not is_admin_user(current_user):
         raise HTTPException(
@@ -208,4 +257,19 @@ def require_admin_when_authenticated(
             detail="Administrative privileges required to access this resource."
         )
     return current_user
+
+
+def require_auditor_or_admin_when_authenticated(
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_user)
+) -> Optional[Dict[str, Any]]:
+    """
+    Enforces ADMIN or AUDITOR role when an Authorization Bearer token is present.
+    """
+    if current_user is not None and not is_auditor_or_admin(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Auditor or Administrative privileges required to access this resource."
+        )
+    return current_user
+
 

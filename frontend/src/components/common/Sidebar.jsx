@@ -22,7 +22,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useSecurity } from '../../context/SecurityContext';
 
 export default function Sidebar({ collapsed, setCollapsed }) {
-  const { user, isAdmin, logout } = useAuth();
+  const { user, isAdmin, isManager, isAuditor, logout } = useAuth();
   const { metrics } = useSecurity();
   const navigate = useNavigate();
   const location = useLocation();
@@ -76,7 +76,11 @@ export default function Sidebar({ collapsed, setCollapsed }) {
               { label: 'Employees', path: '/employees', icon: Users },
               { label: 'Departments', path: '/departments', icon: Building2 }
             ]
-          },
+          }
+        ]
+      : []),
+    ...(isAdmin || isAuditor
+      ? [
           {
             key: 'governance',
             title: 'Governance',
@@ -195,7 +199,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
               Trust<span style={{ color: 'var(--accent-cyan)' }}>Sphere</span>
             </h1>
             <p style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
-              {isAdmin ? 'Admin Console' : 'Employee Workspace'}
+              {isAdmin ? 'Admin Console' : isManager ? 'Manager Workspace' : isAuditor ? 'Auditor Console' : 'Employee Workspace'}
             </p>
           </div>
         )}

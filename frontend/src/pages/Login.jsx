@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShieldCheck, Mail, Lock, ArrowRight, AlertCircle, Sun, Moon, ArrowLeft } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, ArrowRight, AlertCircle, Sun, Moon, ArrowLeft, Building2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
+import { authApi } from '../utils/api';
 
 export default function Login() {
   const { login } = useAuth();
@@ -18,6 +19,22 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isConfigured, setIsConfigured] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    authApi
+      .getSetupStatus()
+      .then((res) => {
+        if (mounted && res?.success && res?.data) {
+          setIsConfigured(Boolean(res.data.is_configured));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -121,6 +138,46 @@ export default function Login() {
               Sign in with your Administrator or Organization Employee credentials.
             </p>
           </div>
+
+          {!isConfigured && (
+            <div
+              style={{
+                padding: '0.85rem 1rem',
+                backgroundColor: 'rgba(0, 240, 255, 0.08)',
+                border: '1px solid rgba(0, 240, 255, 0.3)',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '0.82rem',
+                color: 'var(--text-primary)',
+                marginBottom: '1.25rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.45rem'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>
+                <Building2 size={15} />
+                <span>Initial Deployment Setup Required</span>
+              </div>
+              <span style={{ color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                This TrustSphere instance has not been initialized for an organization yet.
+              </span>
+              <Link
+                to="/setup"
+                style={{
+                  color: 'var(--accent-cyan)',
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  marginTop: '0.15rem'
+                }}
+              >
+                <span>Complete Organization Setup</span>
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+          )}
 
           {error && (
             <div

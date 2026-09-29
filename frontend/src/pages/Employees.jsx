@@ -132,12 +132,20 @@ export default function Employees() {
   const handleOpenEditModal = (emp) => {
     setEditingEmployee(emp);
     setEditError(null);
+    const rawAccess = (emp.access_role || emp.role || 'EMPLOYEE').toUpperCase();
+    const resolvedAccess = rawAccess.includes('ADMIN')
+      ? 'ADMIN'
+      : rawAccess.includes('MANAGER')
+      ? 'MANAGER'
+      : rawAccess.includes('AUDITOR')
+      ? 'AUDITOR'
+      : 'EMPLOYEE';
     setEditFormData({
       name: emp.name || '',
       email: emp.email || '',
       department: emp.department || 'Finance',
       role: emp.role || '',
-      access_role: (emp.role || '').toUpperCase().includes('ADMIN') ? 'ADMIN' : 'EMPLOYEE',
+      access_role: resolvedAccess,
       password: '',
       status: (emp.status || 'ACTIVE').toUpperCase(),
       trustScore: typeof emp.trustScore === 'number' ? emp.trustScore : 88
@@ -421,6 +429,8 @@ export default function Employees() {
                 onChange={(e) => setFormData({ ...formData, access_role: e.target.value })}
               >
                 <option value="EMPLOYEE">EMPLOYEE (Work Modules)</option>
+                <option value="MANAGER">MANAGER (Department & Review)</option>
+                <option value="AUDITOR">AUDITOR (Audit & Compliance Read-Only)</option>
                 <option value="ADMIN">ADMIN (Full Console)</option>
               </select>
             </div>
@@ -583,6 +593,8 @@ export default function Employees() {
                 onChange={(e) => setEditFormData({ ...editFormData, access_role: e.target.value })}
               >
                 <option value="EMPLOYEE">EMPLOYEE</option>
+                <option value="MANAGER">MANAGER</option>
+                <option value="AUDITOR">AUDITOR</option>
                 <option value="ADMIN">ADMIN</option>
               </select>
             </div>

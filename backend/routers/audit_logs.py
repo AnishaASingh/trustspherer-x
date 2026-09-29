@@ -3,12 +3,12 @@ from fastapi import APIRouter, Query, Depends
 
 from database import get_audit_logs_collection
 from schemas.common import ApiResponse
-from utils.security import require_admin_when_authenticated
+from utils.security import require_auditor_or_admin_when_authenticated
 
 router = APIRouter(
     prefix="/api/audit-logs",
     tags=["Audit Logs"],
-    dependencies=[Depends(require_admin_when_authenticated)]
+    dependencies=[Depends(require_auditor_or_admin_when_authenticated)]
 )
 
 
