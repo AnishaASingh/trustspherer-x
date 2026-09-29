@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom';
 import TrustScoreBadge from '../common/TrustScoreBadge';
 import RiskBadge from '../common/RiskBadge';
 import StatusBadge from '../common/StatusBadge';
+import { useAuth } from '../../context/AuthContext';
 
 export default function NetworkGraph({ 
   departments = [], 
@@ -21,18 +22,24 @@ export default function NetworkGraph({
   assets = [], 
   incidents = [] 
 }) {
+  const { organization } = useAuth();
   const [selectedNode, setSelectedNode] = useState(null);
   const [filterRiskOnly, setFilterRiskOnly] = useState(false);
   const [activeDeptFilter, setActiveDeptFilter] = useState('ALL');
+
+  const scoredAssets = assets.filter(a => typeof a.trustScore === 'number');
+  const orgAvgScore = scoredAssets.length > 0
+    ? Math.round(scoredAssets.reduce((acc, a) => acc + a.trustScore, 0) / scoredAssets.length)
+    : null;
 
   // Build graph nodes
   const rootNode = {
     id: "node-org",
     type: "ORGANIZATION",
-    name: "TrustSphere Global Corp",
+    name: organization?.name || "TrustSphere Organization",
     subtitle: "Enterprise Root Node",
-    trustScore: departments.length > 0 ? Math.round(departments.reduce((acc, d) => acc + (d.trustScore || 85), 0) / departments.length) : 100,
-    risk: "LOW",
+    trustScore: orgAvgScore,
+    risk: orgAvgScore === null ? "LOW" : orgAvgScore < 60 ? "HIGH" : orgAvgScore < 75 ? "MEDIUM" : "LOW",
     status: "ACTIVE",
     x: 450,
     y: 50,
@@ -42,18 +49,19 @@ export default function NetworkGraph({
   const deptNodes = departments.map((d, index) => {
     const spacing = Math.max(160, Math.min(220, 800 / (departments.length || 1)));
     const startX = Math.max(100, 450 - ((departments.length - 1) * spacing) / 2);
+    const hasScore = typeof d.trustScore === 'number';
     return {
       id: `node-${d.id || d._id}`,
       type: "DEPARTMENT",
       data: d,
       name: d.name,
       subtitle: `${d.employeeCount || 0} Staff • ${d.assetCount || 0} Assets`,
-      trustScore: d.trustScore !== undefined ? d.trustScore : 85,
-      risk: d.riskLevel || 'LOW',
+      trustScore: hasScore ? d.trustScore : null,
+      risk: d.riskTier && d.riskTier !== 'N/A' ? d.riskTier : 'LOW',
       status: "ACTIVE",
       x: startX + index * spacing,
       y: 190,
-      color: (d.trustScore >= 80 || d.trustScore === undefined) ? "#10B981" : d.trustScore >= 60 ? "#F59E0B" : "#EF4444"
+      color: !hasScore ? "#3B82F6" : d.trustScore >= 75 ? "#10B981" : d.trustScore >= 60 ? "#F59E0B" : "#EF4444"
     };
   });
 
@@ -69,19 +77,20 @@ export default function NetworkGraph({
     const offsetX = (index % 3 - 1) * 60;
     const parentX = parentDept ? parentDept.x : (rootNode.x + offsetX);
     const parentId = parentDept ? parentDept.id : rootNode.id;
+    const hasScore = typeof e.trustScore === 'number';
     return {
       id: `node-${e.id || e._id}`,
       type: "EMPLOYEE",
       data: e,
       name: e.name,
       subtitle: e.role,
-      trustScore: e.trustScore !== undefined ? e.trustScore : 85,
-      risk: e.riskLevel || 'LOW',
+      trustScore: hasScore ? e.trustScore : null,
+      risk: e.riskLevel && e.riskLevel !== 'N/A' ? e.riskLevel : 'LOW',
       status: e.status || 'ACTIVE',
       parentId: parentId,
       x: parentX + (parentDept ? offsetX : 0),
       y: 340 + (index % 2) * 45,
-      color: (e.trustScore >= 80 || e.trustScore === undefined) ? "#10B981" : e.trustScore >= 60 ? "#F59E0B" : "#EF4444"
+      color: !hasScore ? "#3B82F6" : e.trustScore >= 75 ? "#10B981" : e.trustScore >= 60 ? "#F59E0B" : "#EF4444"
     };
   });
 
@@ -99,14 +108,14 @@ export default function NetworkGraph({
       data: a,
       name: a.name,
       subtitle: `${a.type} • ${a.size}`,
-      trustScore: a.trustScore !== undefined ? a.trustScore : 80,
+      trustScore: typeof a.trustScore === 'number' ? a.trustScore : null,
       risk: a.risk || 'LOW',
       status: a.status || 'VERIFIED',
       parentId: parentId,
       x: parentX + (parentDept ? offsetX : 0),
       y: 490 + (index % 2) * 55,
       isHighRisk: isHigh || isCritical,
-      color: isCritical ? "#EF4444" : isHigh ? "#F97316" : (a.trustScore >= 75 || a.trustScore === undefined) ? "#10B981" : "#F59E0B"
+      color: isCritical ? "#EF4444" : isHigh ? "#F97316" : (typeof a.trustScore === 'number' && a.trustScore >= 75) ? "#10B981" : "#F59E0B"
     };
   });
 
@@ -396,7 +405,7 @@ export default function NetworkGraph({
                     className="font-mono"
                     style={{ pointerEvents: 'none' }}
                   >
-                    {node.trustScore}/100 • {node.type}
+                    {node.trustScore !== null && node.trustScore !== undefined ? `${node.trustScore}/100` : 'Unverified'} • {node.type}
                   </text>
                 </g>
               );

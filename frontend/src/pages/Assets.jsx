@@ -224,15 +224,22 @@ export default function Assets() {
       {filteredAssets.length === 0 ? (
         <EmptyState 
           icon={Layers}
-          title="No digital assets match criteria"
-          description="Try broadening your search term or clearing one of your filter dropdowns."
+          title={assets.length === 0 ? "No digital assets uploaded." : "No digital assets match criteria"}
+          description={assets.length === 0 ? "Upload a digital asset or synchronize Gmail to verify files through the 7-layer TrustSphere pipeline." : "Try broadening your search term or clearing one of your filter dropdowns."}
           action={
-            <button 
-              onClick={() => { setSearch(''); setTypeFilter('ALL'); setRiskFilter('ALL'); setDeptFilter('ALL'); setStatusFilter('ALL'); }}
-              className="btn btn-secondary btn-sm"
-            >
-              Reset Filters
-            </button>
+            assets.length === 0 ? (
+              <Link to="/upload" className="btn btn-primary btn-sm">
+                <UploadCloud size={15} />
+                <span>Upload Asset</span>
+              </Link>
+            ) : (
+              <button 
+                onClick={() => { setSearch(''); setTypeFilter('ALL'); setRiskFilter('ALL'); setDeptFilter('ALL'); setStatusFilter('ALL'); }}
+                className="btn btn-secondary btn-sm"
+              >
+                Reset Filters
+              </button>
+            )
           }
         />
       ) : (

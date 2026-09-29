@@ -156,15 +156,17 @@ export default function Incidents() {
       {filteredIncidents.length === 0 ? (
         <EmptyState 
           icon={AlertTriangle}
-          title="No incidents match your filters"
-          description="Try selecting a different severity or department filter."
+          title={incidents.length === 0 ? "No incidents recorded." : "No incidents match your filters"}
+          description={incidents.length === 0 ? "No security incidents have been recorded in the database." : "Try selecting a different severity or department filter."}
           action={
-            <button 
-              onClick={() => { setSearch(''); setSeverityFilter('ALL'); setStatusFilter('ALL'); setDeptFilter('ALL'); }}
-              className="btn btn-secondary btn-sm"
-            >
-              Reset Filters
-            </button>
+            incidents.length > 0 ? (
+              <button 
+                onClick={() => { setSearch(''); setSeverityFilter('ALL'); setStatusFilter('ALL'); setDeptFilter('ALL'); }}
+                className="btn btn-secondary btn-sm"
+              >
+                Reset Filters
+              </button>
+            ) : null
           }
         />
       ) : (

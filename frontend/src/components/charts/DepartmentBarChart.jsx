@@ -2,16 +2,29 @@ import React from 'react';
 import { getTrustLevel } from '../../utils/trustCalculator';
 
 export default function DepartmentBarChart({ 
-  departments = [
-    { name: "Finance", trustScore: 91 },
-    { name: "HR", trustScore: 88 },
-    { name: "IT", trustScore: 72 },
-    { name: "Operations", trustScore: 84 }
-  ]
+  departments = []
 }) {
+  if (!Array.isArray(departments) || departments.length === 0) {
+    return (
+      <div
+        style={{
+          padding: '2rem 1rem',
+          textAlign: 'center',
+          color: 'var(--text-muted)',
+          fontSize: '0.85rem',
+          border: '1px dashed var(--border-subtle)',
+          borderRadius: 'var(--radius-sm)'
+        }}
+      >
+        No department trust data available.
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
       {departments.map((dept) => {
+        const hasScore = dept.trustScore !== null && dept.trustScore !== undefined && !Number.isNaN(Number(dept.trustScore));
         const { color, level } = getTrustLevel(dept.trustScore);
         return (
           <div key={dept.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -21,7 +34,7 @@ export default function DepartmentBarChart({
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>• {level}</span>
               </div>
               <span className="font-mono" style={{ fontWeight: 700, color }}>
-                {dept.trustScore} / 100
+                {hasScore ? `${dept.trustScore} / 100` : 'Awaiting verification'}
               </span>
             </div>
 
@@ -36,16 +49,18 @@ export default function DepartmentBarChart({
                 position: 'relative'
               }}
             >
-              <div 
-                style={{
-                  width: `${dept.trustScore}%`,
-                  height: '100%',
-                  background: `linear-gradient(90deg, #3B82F6, ${color})`,
-                  borderRadius: '4px',
-                  boxShadow: `0 0 10px ${color}`,
-                  transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
-                }}
-              />
+              {hasScore && (
+                <div 
+                  style={{
+                    width: `${dept.trustScore}%`,
+                    height: '100%',
+                    background: `linear-gradient(90deg, #3B82F6, ${color})`,
+                    borderRadius: '4px',
+                    boxShadow: `0 0 10px ${color}`,
+                    transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
+                  }}
+                />
+              )}
             </div>
           </div>
         );

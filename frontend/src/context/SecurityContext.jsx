@@ -18,8 +18,8 @@ const SecurityContext = createContext(null);
 
 export function mapBackendAsset(a) {
   if (!a) return null;
-  const rawScore = a.trust_score ?? a.trustScore ?? 50;
-  const trustScore = typeof rawScore === 'number' ? Math.round(rawScore) : 50;
+  const rawScore = a.trust_score ?? a.trustScore;
+  const trustScore = typeof rawScore === 'number' ? Math.round(rawScore) : null;
   const rawRisk = a.risk_level || a.risk || 'Medium Risk';
   let risk = 'MEDIUM';
   if (typeof rawRisk === 'string') {
@@ -41,8 +41,8 @@ export function mapBackendAsset(a) {
     category: a.category || a.type || 'Document',
     file_type: a.file_type || `.${fileExt}`,
     fileExt,
-    size: a.file_size || a.size || '1 MB',
-    file_size: a.file_size || a.size || '1 MB',
+    size: a.file_size || a.size || '—',
+    file_size: a.file_size || a.size || '—',
     source: a.source || 'Enterprise Ingestion',
     department: a.department_id || a.department || 'General',
     department_id: a.department_id || a.department || 'General',
@@ -51,27 +51,13 @@ export function mapBackendAsset(a) {
     risk,
     risk_level: rawRisk,
     status: a.status || (risk === 'LOW' ? 'VERIFIED' : risk === 'MEDIUM' ? 'UNDER REVIEW' : risk === 'HIGH' ? 'FLAGGED' : 'REJECTED'),
-    date: a.upload_date || (a.created_at ? a.created_at.substring(0, 16).replace('T', ' ') : new Date().toISOString().substring(0, 16).replace('T', ' ')),
+    date: a.upload_date || (a.created_at ? a.created_at.substring(0, 16).replace('T', ' ') : '—'),
     created_at: a.created_at,
-    uploader: a.uploader || 'Security Analyst',
+    uploader: a.uploader || a.source || 'System',
     hash: a.file_hash || a.hash || '',
     file_hash: a.file_hash || a.hash || '',
-    factors: a.factors || {
-      integrity: 90,
-      metadata: 85,
-      structure: 85,
-      content: 80,
-      privacy: 95,
-      anomaly: 85
-    },
-    checks: Array.isArray(a.checks) ? a.checks : [
-      { name: 'File Integrity', passed: true, detail: 'Cryptographic block hash verified' },
-      { name: 'Metadata Validation', passed: true, detail: 'File header structural consistency' },
-      { name: 'Document Structure', passed: true, detail: 'Structure parsed and validated' },
-      { name: 'Content Consistency', passed: risk !== 'HIGH' && risk !== 'CRITICAL', detail: 'Threat heuristics evaluated' },
-      { name: 'Privacy / PII Check', passed: true, detail: 'Zero plain-text privacy violations' },
-      { name: 'Anomaly Detection', passed: true, detail: 'Isolation Forest normal' }
-    ],
+    factors: a.factors || null,
+    checks: Array.isArray(a.checks) ? a.checks : [],
     anomalies: Array.isArray(a.anomalies) ? a.anomalies : [],
     recommendations: Array.isArray(a.recommendations) ? a.recommendations : (a.recommendation ? [a.recommendation] : []),
     relatedIncidentId: a.relatedIncidentId || a.incident_id || null,
@@ -93,24 +79,20 @@ export function mapBackendIncident(raw) {
     id: i.incident_id || i.id,
     incident_id: i.incident_id || i.id,
     title: i.title || `Incident ${i.incident_id || i.id}`,
-    relatedAssetId: i.asset_id || i.relatedAssetId || 'AST-UNKNOWN',
+    relatedAssetId: i.asset_id || i.relatedAssetId || 'N/A',
     relatedAssetName: i.asset_name || i.relatedAssetName || i.asset_id || 'Digital Asset',
     severity,
-    department: i.department_id || i.department || 'Security Operations',
-    department_id: i.department_id || i.department || 'Security Operations',
+    department: i.department_id || i.department || 'Unassigned',
+    department_id: i.department_id || i.department || 'Unassigned',
     status: (i.status === 'INVESTIGATING' ? 'UNDER INVESTIGATION' : i.status) || 'OPEN',
-    detectedDate: i.detected_date || i.detectedDate || (i.created_at ? i.created_at.substring(0, 16).replace('T', ' ') : new Date().toISOString().substring(0, 16).replace('T', ' ')),
-    assignedTo: i.assigned_to || i.assignedTo || 'SecOps Automated Triage',
-    reason: i.description || i.reason || 'Automated risk policy alert',
-    description: i.description || i.reason || 'Automated risk policy alert',
-    verificationFailures: i.verificationFailures || [],
+    detectedDate: i.detected_date || i.detectedDate || (i.created_at ? i.created_at.substring(0, 16).replace('T', ' ') : '—'),
+    assignedTo: i.assigned_to || i.assignedTo || 'Unassigned',
+    reason: i.description || i.reason || 'No incident description provided.',
+    description: i.description || i.reason || 'No incident description provided.',
+    verificationFailures: Array.isArray(i.verificationFailures) ? i.verificationFailures : [],
     timeline: Array.isArray(i.timeline) ? i.timeline : [],
-    riskInformation: i.riskInformation || {
-      financialExposure: severity === 'CRITICAL' ? 'High Impact' : severity === 'HIGH' ? 'Moderate Impact' : 'Low Impact',
-      threatActorType: 'Untrusted Ingestion',
-      recommendedAction: 'Quarantine and verify credentials'
-    },
-    recommendation: i.recommendation || 'Initiate incident response triage.'
+    riskInformation: i.riskInformation || null,
+    recommendation: i.recommendation || null
   };
 }
 
@@ -118,7 +100,8 @@ export function mapBackendEmployee(e) {
   if (!e) return null;
   const fullName = e.name || `${e.first_name || ''} ${e.last_name || ''}`.trim() || 'Employee';
   const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'EM';
-  const score = typeof e.trust_score === 'number' ? Math.round(e.trust_score) : (e.trustScore || 85);
+  const rawScore = e.trust_score ?? e.trustScore;
+  const score = typeof rawScore === 'number' ? Math.round(rawScore) : null;
   return {
     id: e.employee_id || e.id,
     employee_id: e.employee_id || e.id,
@@ -126,36 +109,35 @@ export function mapBackendEmployee(e) {
     last_name: e.last_name,
     name: fullName,
     email: e.email || '',
-    department: e.department_id || e.department || 'IT',
-    department_id: e.department_id || e.department || 'IT',
-    role: e.role || 'Security Staff',
+    department: e.department_id || e.department || 'Unassigned',
+    department_id: e.department_id || e.department || 'Unassigned',
+    role: e.role || 'Staff',
+    access_role: e.access_role || 'EMPLOYEE',
     status: e.status || 'ACTIVE',
     trustScore: score,
     trust_score: score,
-    joinDate: (e.created_at || e.joinDate || new Date().toISOString()).slice(0, 10),
+    joinDate: (e.created_at || e.joinDate || '').slice(0, 10) || '—',
     avatar: initials,
-    riskLevel: score < 60 ? 'HIGH' : score < 75 ? 'MEDIUM' : 'LOW',
-    associatedAssets: e.associatedAssets || [],
+    riskLevel: score === null ? 'N/A' : score < 60 ? 'HIGH' : score < 75 ? 'MEDIUM' : 'LOW',
+    associatedAssets: Array.isArray(e.associatedAssets || e.associated_assets) ? (e.associatedAssets || e.associated_assets) : [],
     asset_count: e.asset_count || 0,
-    relatedIncidents: e.relatedIncidents || [],
-    activities: e.activities || [
-      { action: "Employee profile active", time: (e.created_at || new Date().toISOString()).slice(0, 16).replace('T', ' '), status: "SUCCESS" }
-    ]
+    relatedIncidents: Array.isArray(e.relatedIncidents || e.related_incidents) ? (e.relatedIncidents || e.related_incidents) : [],
+    activities: Array.isArray(e.activities) ? e.activities : []
   };
 }
 
 export function mapBackendDepartment(d) {
   if (!d) return null;
-  const score = typeof d.trust_score === 'number' ? Math.round(d.trust_score) : 85;
+  const score = typeof d.trust_score === 'number' ? Math.round(d.trust_score) : null;
   return {
     id: d.id || d.name,
     name: d.name,
     description: d.description || '',
-    head: d.head || 'Department Lead',
+    head: d.head || null,
     trustScore: score,
     trust_score: score,
-    riskTier: d.risk_tier || 'LOW',
-    complianceStatus: d.compliance_status || 'COMPLIANT',
+    riskTier: d.risk_tier || (score === null ? 'N/A' : score < 60 ? 'HIGH' : score < 75 ? 'MEDIUM' : 'LOW'),
+    complianceStatus: d.compliance_status || (score === null ? 'Awaiting verification' : 'VERIFIED'),
     employeeCount: d.employee_count || 0,
     assetCount: d.asset_count || 0,
     incidentCount: d.incident_count || 0
@@ -165,16 +147,16 @@ export function mapBackendDepartment(d) {
 export function mapBackendAuditLog(l) {
   if (!l) return null;
   return {
-    id: l.id || l._id || `LOG-${Math.random().toString(36).substring(7)}`,
-    user: l.user_id || l.user || 'System Security Unit',
-    userEmail: l.user_id || l.userEmail || 'secops@trustsphere.corp',
-    action: l.action || 'Activity Recorded',
-    resource: l.entity_id || l.resource || 'Entity',
+    id: l.id || l._id,
+    user: l.user_id || l.user || 'SYSTEM',
+    userEmail: l.user_id || l.userEmail || '',
+    action: l.action || 'ACTIVITY',
+    resource: l.entity_id || l.resource || 'SYSTEM',
     entity_type: l.entity_type,
     result: l.result || 'SUCCESS',
     ipAddress: l.ip_address || l.ipAddress || '127.0.0.1',
     details: l.description || l.details || '',
-    timestamp: l.timestamp || new Date().toISOString().replace('T', ' ').substring(0, 19)
+    timestamp: l.timestamp || ''
   };
 }
 
@@ -485,14 +467,31 @@ export function SecurityProvider({ children }) {
       a => !a.is_demo && (a.email_metadata || (a.source || '').toLowerCase().includes('gmail') || (a.source || '').toLowerCase().includes('email'))
     ).length;
 
+    // Group verified assets by upload date (YYYY-MM-DD) for real trend trajectory
+    const dateGroups = {};
+    assets.forEach(a => {
+      if (typeof a.trustScore === 'number') {
+        const dayKey = (a.date || '').slice(0, 10) || 'Recent';
+        if (!dateGroups[dayKey]) dateGroups[dayKey] = [];
+        dateGroups[dayKey].push(a.trustScore);
+      }
+    });
+    const sortedKeys = Object.keys(dateGroups).sort().slice(-6);
+    const trendData = sortedKeys.map(k => ({
+      label: k.length === 10 ? k.slice(5) : k,
+      score: Math.round(dateGroups[k].reduce((s, v) => s + v, 0) / dateGroups[k].length)
+    }));
+
     if (backendMetrics) {
+      const totalAssetsCount = backendMetrics.total_assets ?? assets.length;
       return {
-        overallTrustScore: Math.round(backendMetrics.average_trust_score || 0),
-        totalAssets: backendMetrics.total_assets || assets.length,
+        overallTrustScore: totalAssetsCount > 0 ? Math.round(backendMetrics.average_trust_score || 0) : null,
+        totalAssets: totalAssetsCount,
         verifiedAssets: (backendMetrics.low_risk_assets || 0) + (backendMetrics.medium_risk_assets || 0),
         highRiskAssets: (backendMetrics.high_risk_assets || 0) + (backendMetrics.critical_incidents || 0),
         openIncidents: backendMetrics.open_incidents ?? incidents.filter(i => i.status === 'OPEN' || i.status === 'UNDER INVESTIGATION').length,
         emailsVerified: emailsVerifiedCount,
+        trendData,
         riskCounts: backendMetrics.risk_distribution || {
           LOW: assets.filter(a => a.risk === 'LOW').length,
           MEDIUM: assets.filter(a => a.risk === 'MEDIUM').length,
@@ -507,7 +506,7 @@ export function SecurityProvider({ children }) {
     const openIncidents = incidents.filter(i => i.status === 'OPEN' || i.status === 'UNDER INVESTIGATION').length;
     const avgScore = totalAssets > 0 
       ? Math.round(assets.reduce((sum, a) => sum + (a.trustScore || 0), 0) / totalAssets)
-      : 0;
+      : null;
 
     return {
       overallTrustScore: avgScore,
@@ -516,6 +515,7 @@ export function SecurityProvider({ children }) {
       highRiskAssets,
       openIncidents,
       emailsVerified: emailsVerifiedCount,
+      trendData,
       riskCounts: {
         LOW: assets.filter(a => a.risk === 'LOW').length,
         MEDIUM: assets.filter(a => a.risk === 'MEDIUM').length,
@@ -538,6 +538,7 @@ export function SecurityProvider({ children }) {
         isLoading,
         loadError,
         refetch: fetchAllSecurityData,
+        refreshData: fetchAllSecurityData,
         metrics,
         uploadAndAnalyzeAsset,
         updateIncidentStatus,

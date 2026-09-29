@@ -36,6 +36,18 @@ export default function EmailIntegration() {
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [oauthMessage, setOauthMessage] = useState(null);
 
+  // Isolated Demo Email (Development / Test Only) state
+  const [showDemoPanel, setShowDemoPanel] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoResult, setDemoResult] = useState(null);
+  const [demoForm, setDemoForm] = useState({
+    sender: '',
+    subject: '',
+    body: '',
+    department: 'Operations',
+    attachment: null
+  });
+
   const [oauthState, setOauthState] = useState({
     organization_id: 'ORG-TRUSTSPHERE',
     provider: 'Gmail',
@@ -225,6 +237,34 @@ export default function EmailIntegration() {
       addToast(err.message || 'Failed to save filtering rules.', 'error');
     } finally {
       setSavingFilters(false);
+    }
+  };
+
+  const handleRunDemoEmail = async (e) => {
+    e.preventDefault();
+    if (!demoForm.sender.trim() || !demoForm.subject.trim() || !demoForm.body.trim()) {
+      addToast('Enter sender, subject, and body for the isolated demo test.', 'warning');
+      return;
+    }
+    setDemoLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append('sender', demoForm.sender.trim());
+      fd.append('subject', demoForm.subject.trim());
+      fd.append('body', demoForm.body.trim());
+      fd.append('department', demoForm.department);
+      if (demoForm.attachment) {
+        fd.append('attachment', demoForm.attachment);
+      }
+      const res = await ingestionApi.ingestDemoEmail(fd);
+      if (res?.success && res?.data) {
+        setDemoResult(res.data);
+        addToast('Demo email verified in isolated DEMO / TEST sandbox.', 'info');
+      }
+    } catch (err) {
+      addToast(err.message || 'Demo email test failed.', 'error');
+    } finally {
+      setDemoLoading(false);
     }
   };
 
@@ -502,11 +542,25 @@ export default function EmailIntegration() {
           }}
         >
           <div>
-            <h2 style={{ fontSize: '1.08rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Recent Verified Emails
-            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <h2 style={{ fontSize: '1.08rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                Recent Verified Emails
+              </h2>
+              <span
+                className="badge"
+                style={{
+                  background: 'rgba(16, 185, 129, 0.12)',
+                  color: '#10B981',
+                  border: '1px solid rgba(16, 185, 129, 0.35)',
+                  fontSize: '0.68rem',
+                  fontWeight: 700
+                }}
+              >
+                REAL GMAIL
+              </span>
+            </div>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-              Click any email row to view verification analysis, linked digital assets, and technical provenance.
+              Displays only real Gmail-ingested emails. Click any row to view verification analysis, linked digital assets, and technical provenance.
             </p>
           </div>
           <span className="font-mono" style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
@@ -521,7 +575,7 @@ export default function EmailIntegration() {
         ) : recentEmails.length === 0 ? (
           <EmptyState
             icon={Inbox}
-            title="No verified emails yet"
+            title="No verified emails yet."
             description={
               oauthState.is_connected
                 ? 'Click "Sync Gmail" above to fetch and verify recent emails from your connected Gmail inbox.'
@@ -533,6 +587,7 @@ export default function EmailIntegration() {
             <table className="security-table">
               <thead>
                 <tr>
+                  <th>Source</th>
                   <th>Sender</th>
                   <th>Subject</th>
                   <th>Received</th>
@@ -547,6 +602,10 @@ export default function EmailIntegration() {
                     ? String(item.received_time).substring(0, 16).replace('T', ' ')
                     : '—';
                   const attList = Array.isArray(item.attachments) ? item.attachments : [];
+                  const rowScore =
+                    item.trust_score !== null && item.trust_score !== undefined
+                      ? Math.round(item.trust_score)
+                      : null;
 
                   return (
                     <tr
@@ -555,6 +614,21 @@ export default function EmailIntegration() {
                       style={{ cursor: 'pointer' }}
                       title="Click to inspect email verification details"
                     >
+                      <td>
+                        <span
+                          className="badge"
+                          style={{
+                            background: 'rgba(16, 185, 129, 0.12)',
+                            color: '#10B981',
+                            border: '1px solid rgba(16, 185, 129, 0.35)',
+                            fontSize: '0.66rem',
+                            fontWeight: 700
+                          }}
+                        >
+                          REAL GMAIL
+                        </span>
+                      </td>
+
                       <td style={{ fontWeight: 600, color: 'var(--text-primary)', maxWidth: '220px' }}>
                         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {item.sender}
@@ -588,8 +662,8 @@ export default function EmailIntegration() {
 
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                          <TrustScoreBadge score={Math.round(item.trust_score || 50)} size="sm" />
-                          <StatusBadge status={item.risk_level || 'Medium Risk'} />
+                          <TrustScoreBadge score={rowScore} size="sm" />
+                          <StatusBadge status={item.risk_level || 'Awaiting verification'} />
                         </div>
                       </td>
                     </tr>
@@ -597,6 +671,192 @@ export default function EmailIntegration() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+      </div>
+
+      {/* Isolated Demo Email (Development / Test Only) Section */}
+      <div
+        className="glass-panel"
+        style={{
+          padding: '1.25rem 1.5rem',
+          border: '1px dashed rgba(245, 158, 11, 0.35)',
+          background: 'rgba(245, 158, 11, 0.03)'
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.75rem'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+            <span
+              className="badge"
+              style={{
+                background: 'rgba(245, 158, 11, 0.15)',
+                color: '#FBBF24',
+                border: '1px solid rgba(245, 158, 11, 0.4)',
+                fontSize: '0.68rem',
+                fontWeight: 700
+              }}
+            >
+              DEMO / TEST
+            </span>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+              Demo Email (Development / Test Only)
+            </h3>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              Isolated sandbox for pipeline testing — never mixed with Real Gmail or organization dashboard metrics.
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowDemoPanel((prev) => !prev)}
+            className="btn btn-secondary btn-sm"
+          >
+            <span>{showDemoPanel ? 'Hide Demo Sandbox' : 'Open Demo Sandbox'}</span>
+            <ChevronDown
+              size={14}
+              style={{
+                transform: showDemoPanel ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.15s ease'
+              }}
+            />
+          </button>
+        </div>
+
+        {showDemoPanel && (
+          <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border-subtle)' }}>
+            <form onSubmit={handleRunDemoEmail} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.9rem' }}>
+                <div>
+                  <label className="input-label" style={{ fontSize: '0.76rem' }}>
+                    Test Sender Address
+                  </label>
+                  <input
+                    type="email"
+                    className="input-field"
+                    placeholder="sender@example.org"
+                    value={demoForm.sender}
+                    onChange={(e) => setDemoForm({ ...demoForm, sender: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="input-label" style={{ fontSize: '0.76rem' }}>
+                    Test Subject
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="Test email subject"
+                    value={demoForm.subject}
+                    onChange={(e) => setDemoForm({ ...demoForm, subject: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="input-label" style={{ fontSize: '0.76rem' }}>
+                    Target Department
+                  </label>
+                  <select
+                    className="input-field"
+                    value={demoForm.department}
+                    onChange={(e) => setDemoForm({ ...demoForm, department: e.target.value })}
+                  >
+                    <option value="Operations">Operations</option>
+                    <option value="Finance">Finance</option>
+                    <option value="HR">HR</option>
+                    <option value="IT & Security">IT & Security</option>
+                    <option value="Legal">Legal</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="input-label" style={{ fontSize: '0.76rem' }}>
+                  Test Email Body
+                </label>
+                <textarea
+                  className="input-field"
+                  rows={3}
+                  placeholder="Enter email content to run through the 7-layer verification sandbox..."
+                  value={demoForm.body}
+                  onChange={(e) => setDemoForm({ ...demoForm, body: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <input
+                  type="file"
+                  onChange={(e) => setDemoForm({ ...demoForm, attachment: e.target.files?.[0] || null })}
+                  style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}
+                />
+
+                <button type="submit" className="btn btn-secondary" disabled={demoLoading}>
+                  <span>{demoLoading ? 'Running Demo Verification...' : 'Run Demo Email Test'}</span>
+                </button>
+              </div>
+            </form>
+
+            {demoResult && (
+              <div
+                style={{
+                  marginTop: '1rem',
+                  padding: '1rem',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(0, 0, 0, 0.25)',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem'
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span
+                      className="badge"
+                      style={{
+                        background: 'rgba(245, 158, 11, 0.15)',
+                        color: '#FBBF24',
+                        border: '1px solid rgba(245, 158, 11, 0.4)',
+                        fontSize: '0.66rem',
+                        fontWeight: 700
+                      }}
+                    >
+                      DEMO / TEST
+                    </span>
+                    <strong style={{ fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                      {demoResult.subject}
+                    </strong>
+                  </div>
+                  <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                    From: {demoResult.sender} • Status: {demoResult.status} (Isolated test result)
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <TrustScoreBadge
+                    score={
+                      demoResult.trust_score !== null && demoResult.trust_score !== undefined
+                        ? Math.round(demoResult.trust_score)
+                        : null
+                    }
+                    size="sm"
+                  />
+                  <StatusBadge status={demoResult.risk_level || 'Awaiting verification'} />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -620,8 +880,22 @@ export default function EmailIntegration() {
                 gap: '0.5rem'
               }}
             >
-              <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                {selectedEmail.subject}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span
+                  className="badge"
+                  style={{
+                    background: 'rgba(16, 185, 129, 0.12)',
+                    color: '#10B981',
+                    border: '1px solid rgba(16, 185, 129, 0.35)',
+                    fontSize: '0.66rem',
+                    fontWeight: 700
+                  }}
+                >
+                  REAL GMAIL
+                </span>
+                <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  {selectedEmail.subject}
+                </div>
               </div>
               <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                 <strong>From:</strong> {selectedEmail.sender}
@@ -675,7 +949,13 @@ export default function EmailIntegration() {
                   Trust Score
                 </div>
                 <div style={{ marginTop: '0.4rem' }}>
-                  <TrustScoreBadge score={Math.round(selectedEmail.trust_score || 50)} />
+                  <TrustScoreBadge
+                    score={
+                      selectedEmail.trust_score !== null && selectedEmail.trust_score !== undefined
+                        ? Math.round(selectedEmail.trust_score)
+                        : null
+                    }
+                  />
                 </div>
               </div>
 
@@ -691,7 +971,7 @@ export default function EmailIntegration() {
                   Risk Level
                 </div>
                 <div style={{ marginTop: '0.4rem' }}>
-                  <StatusBadge status={selectedEmail.risk_level || 'Medium Risk'} />
+                  <StatusBadge status={selectedEmail.risk_level || 'Awaiting verification'} />
                 </div>
               </div>
             </div>

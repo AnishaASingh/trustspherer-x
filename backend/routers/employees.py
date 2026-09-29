@@ -79,7 +79,7 @@ def create_employee(
         "role": req.role.strip(),
         "access_role": access_role,
         "status": emp_status,
-        "trust_score": req.trust_score if req.trust_score is not None else 88,
+        "trust_score": req.trust_score,
         "created_at": now_iso,
         "updated_at": now_iso
     }
@@ -149,15 +149,51 @@ def get_employee_details(
 
     assets_col = get_assets_collection()
     inc_col = get_incidents_collection()
+    from database import get_audit_logs_collection
+    audit_col = get_audit_logs_collection()
 
     dept_name = emp.get("department_id", "")
-    associated_assets = list(assets_col.find({"department_id": dept_name}).limit(10))
+    associated_assets = list(
+        assets_col.find({
+            "department_id": dept_name,
+            "is_demo": {"$ne": True},
+            "email_metadata.is_demo": {"$ne": True},
+            "email_metadata.simulated": {"$ne": True},
+            "ingestion_mode": {"$ne": "DEMO"}
+        }).limit(10)
+    )
     for a in associated_assets:
         a["_id"] = str(a["_id"])
 
-    associated_incidents = list(inc_col.find({"department_id": dept_name}).limit(10))
+    associated_incidents = list(
+        inc_col.find({
+            "department_id": dept_name,
+            "is_demo": {"$ne": True}
+        }).limit(10)
+    )
     for i in associated_incidents:
         i["_id"] = str(i["_id"])
+
+    emp_id_val = emp.get("employee_id", "")
+    emp_email_val = emp.get("email", "")
+    emp_name_val = emp.get("name", "")
+    raw_logs = list(
+        audit_col.find({
+            "$or": [
+                {"entity_id": emp_id_val},
+                {"user_id": emp_email_val},
+                {"user_id": emp_name_val}
+            ]
+        }).sort("timestamp", -1).limit(10)
+    )
+    emp["activities"] = [
+        {
+            "action": f"{log.get('action', 'ACTIVITY')}: {log.get('description', '')}".strip(": "),
+            "time": str(log.get("timestamp", "")).replace("T", " ")[:16],
+            "risk": "HIGH" if log.get("result") in ("CRITICAL", "WARNING") else "LOW"
+        }
+        for log in raw_logs
+    ]
 
     emp["associated_assets"] = associated_assets
     emp["related_incidents"] = associated_incidents

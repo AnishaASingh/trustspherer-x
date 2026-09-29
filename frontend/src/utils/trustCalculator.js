@@ -13,7 +13,17 @@ function hashString(str) {
 
 // Map score to classification & color
 export function getTrustLevel(score) {
-  if (score >= 90) {
+  if (score === null || score === undefined || score === '' || Number.isNaN(Number(score))) {
+    return {
+      level: "Awaiting verification",
+      risk: "N/A",
+      status: "AWAITING VERIFICATION",
+      color: "var(--text-muted)",
+      badgeClass: "badge-medium"
+    };
+  }
+  const numScore = Number(score);
+  if (numScore >= 90) {
     return {
       level: "Highly Trusted",
       risk: "LOW",

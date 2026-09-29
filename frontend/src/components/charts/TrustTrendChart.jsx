@@ -1,17 +1,29 @@
 import React, { useState } from 'react';
 
 export default function TrustTrendChart({ 
-  data = [
-    { label: "Apr", score: 79 },
-    { label: "May", score: 81 },
-    { label: "Jun", score: 82 },
-    { label: "Jul", score: 80 },
-    { label: "Aug", score: 83 },
-    { label: "Sep", score: 84 }
-  ],
+  data = [],
   height = 240
 }) {
   const [hoveredPoint, setHoveredPoint] = useState(null);
+
+  if (!Array.isArray(data) || data.length === 0) {
+    return (
+      <div
+        style={{
+          height: `${height}px`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--text-muted)',
+          fontSize: '0.85rem',
+          border: '1px dashed var(--border-subtle)',
+          borderRadius: 'var(--radius-sm)'
+        }}
+      >
+        Awaiting verification — No trust score trend data available yet.
+      </div>
+    );
+  }
 
   const paddingX = 40;
   const paddingY = 30;
@@ -19,20 +31,27 @@ export default function TrustTrendChart({
   const graphWidth = width - paddingX * 2;
   const graphHeight = height - paddingY * 2;
 
-  const minScore = 50;
+  const minScore = 0;
   const maxScore = 100;
 
   const points = data.map((d, index) => {
-    const x = paddingX + (index / (data.length - 1)) * graphWidth;
-    const y = paddingY + graphHeight - ((d.score - minScore) / (maxScore - minScore)) * graphHeight;
-    return { ...d, x, y };
+    const x = data.length === 1
+      ? paddingX + graphWidth / 2
+      : paddingX + (index / (data.length - 1)) * graphWidth;
+    const clampedScore = Math.max(minScore, Math.min(maxScore, Number(d.score) || 0));
+    const y = paddingY + graphHeight - ((clampedScore - minScore) / (maxScore - minScore)) * graphHeight;
+    return { ...d, score: Math.round(clampedScore), x, y };
   });
 
-  const pathD = points.reduce((acc, p, i) => {
-    return i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`;
-  }, "");
+  const pathD = points.length === 1
+    ? `M ${paddingX} ${points[0].y} L ${width - paddingX} ${points[0].y}`
+    : points.reduce((acc, p, i) => {
+        return i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`;
+      }, "");
 
-  const areaD = `${pathD} L ${points[points.length - 1].x} ${height - paddingY} L ${points[0].x} ${height - paddingY} Z`;
+  const areaD = points.length === 1
+    ? `${pathD} L ${width - paddingX} ${height - paddingY} L ${paddingX} ${height - paddingY} Z`
+    : `${pathD} L ${points[points.length - 1].x} ${height - paddingY} L ${points[0].x} ${height - paddingY} Z`;
 
   return (
     <div style={{ width: '100%', position: 'relative' }}>

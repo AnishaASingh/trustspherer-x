@@ -99,15 +99,7 @@ export default function IncidentDetails() {
     }
   };
 
-  const timelineSteps = incident.timeline || [
-    { step: "Asset uploaded", time: incident.detectedDate, status: "completed", note: "File entered organizational ingestion channel." },
-    { step: "Integrity check", time: incident.detectedDate, status: "completed", note: "Cryptographic hash check executed." },
-    { step: "Metadata anomaly", time: incident.detectedDate, status: "completed", note: "Structural or signature divergence flagged." },
-    { step: "Risk detected", time: incident.detectedDate, status: "completed", note: "Risk scoring triggered alert threshold." },
-    { step: "Incident created", time: incident.detectedDate, status: "completed", note: `Ticket ${incident.id} generated.` },
-    { step: "Under investigation", time: null, status: incident.status === 'UNDER INVESTIGATION' ? 'active' : incident.status === 'RESOLVED' ? 'completed' : 'pending', note: "SOC investigation and triage." },
-    { step: "Resolution", time: null, status: incident.status === 'RESOLVED' ? 'completed' : 'pending', note: "Remediation and asset disposition." }
-  ];
+  const timelineSteps = Array.isArray(incident.timeline) ? incident.timeline : [];
 
   return (
     <div>
@@ -347,61 +339,67 @@ export default function IncidentDetails() {
           />
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {timelineSteps.map((step, idx) => {
-              const isCompleted = step.status === 'completed';
-              const isActive = step.status === 'active';
+            {timelineSteps.length === 0 ? (
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                No timeline events recorded for this incident.
+              </div>
+            ) : (
+              timelineSteps.map((step, idx) => {
+                const isCompleted = step.status === 'completed';
+                const isActive = step.status === 'active';
 
-              let dotColor = '#64748B';
-              if (isCompleted) dotColor = 'var(--trust-75)';
-              if (isActive) dotColor = 'var(--accent-cyan)';
+                let dotColor = '#64748B';
+                if (isCompleted) dotColor = 'var(--trust-75)';
+                if (isActive) dotColor = 'var(--accent-cyan)';
 
-              return (
-                <div key={idx} style={{ position: 'relative' }}>
-                  {/* Timeline dot */}
-                  <div 
-                    style={{
-                      position: 'absolute',
-                      left: '-2rem',
-                      top: '2px',
-                      width: '16px',
-                      height: '16px',
-                      borderRadius: '50%',
-                      backgroundColor: isCompleted ? 'var(--trust-75)' : isActive ? 'var(--accent-cyan)' : 'var(--bg-secondary)',
-                      border: `2px solid ${dotColor}`,
-                      boxShadow: isActive ? '0 0 10px var(--accent-cyan)' : 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    {isCompleted && <Check size={10} color="#000" />}
-                  </div>
+                return (
+                  <div key={idx} style={{ position: 'relative' }}>
+                    {/* Timeline dot */}
+                    <div 
+                      style={{
+                        position: 'absolute',
+                        left: '-2rem',
+                        top: '2px',
+                        width: '16px',
+                        height: '16px',
+                        borderRadius: '50%',
+                        backgroundColor: isCompleted ? 'var(--trust-75)' : isActive ? 'var(--accent-cyan)' : 'var(--bg-secondary)',
+                        border: `2px solid ${dotColor}`,
+                        boxShadow: isActive ? '0 0 10px var(--accent-cyan)' : 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      {isCompleted && <Check size={10} color="#000" />}
+                    </div>
 
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.9rem', color: isCompleted || isActive ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                        {step.step}
-                      </span>
-                      {step.time && (
-                        <span className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                          {step.time}
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.9rem', color: isCompleted || isActive ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                          {step.step}
                         </span>
-                      )}
-                      {isActive && (
-                        <span className="badge badge-medium" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>
-                          IN PROGRESS
-                        </span>
+                        {step.time && (
+                          <span className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            {step.time}
+                          </span>
+                        )}
+                        {isActive && (
+                          <span className="badge badge-medium" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>
+                            IN PROGRESS
+                          </span>
+                        )}
+                      </div>
+                      {step.note && (
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+                          {step.note}
+                        </p>
                       )}
                     </div>
-                    {step.note && (
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
-                        {step.note}
-                      </p>
-                    )}
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
       </div>
@@ -416,32 +414,35 @@ export default function IncidentDetails() {
           </h3>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {(incident.verificationFailures || [
-              "Cryptographic hash invalidation post signing",
-              "Originating IP proxy failover"
-            ]).map((failure, i) => (
-              <div 
-                key={i}
-                style={{
-                  padding: '0.75rem 1rem',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: 'rgba(239, 68, 68, 0.08)',
-                  border: '1px solid rgba(239, 68, 68, 0.25)',
-                  color: '#F87171',
-                  fontSize: '0.825rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}
-              >
-                <AlertTriangle size={15} />
-                <span>{failure}</span>
+            {Array.isArray(incident.verificationFailures) && incident.verificationFailures.length > 0 ? (
+              incident.verificationFailures.map((failure, i) => (
+                <div 
+                  key={i}
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                    color: '#F87171',
+                    fontSize: '0.825rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  <AlertTriangle size={15} />
+                  <span>{failure}</span>
+                </div>
+              ))
+            ) : (
+              <div style={{ fontSize: '0.825rem', color: 'var(--text-muted)' }}>
+                No explicit verification rule failures attached; see Detection Rationale below.
               </div>
-            ))}
+            )}
           </div>
 
           <div style={{ marginTop: '1.25rem', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
-            <strong>Detection Rationale:</strong> {incident.reason}
+            <strong>Detection Rationale:</strong> {incident.reason || 'Automated verification threshold triggered.'}
           </div>
         </div>
 
@@ -474,7 +475,7 @@ export default function IncidentDetails() {
               Authoritative Mitigation Recommendation
             </span>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginTop: '0.35rem', lineHeight: 1.5 }}>
-              {incident.recommendation}
+              {incident.recommendation || 'Review linked digital asset verification report and execute department triage protocol.'}
             </p>
           </div>
         </div>

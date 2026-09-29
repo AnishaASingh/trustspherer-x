@@ -252,8 +252,8 @@ export default function Employees() {
       {filteredEmployees.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="No employees found"
-          description="Try modifying your search criteria or add a new employee profile."
+          title={employees.length === 0 ? "No employees added yet." : "No employees found"}
+          description={employees.length === 0 ? "Add your first organization employee to manage roles, department assignments, and console access." : "Try modifying your search criteria or add a new employee profile."}
         />
       ) : (
         <div className="table-container">

@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
-from database import get_incidents_collection
+from database import get_incidents_collection, get_assets_collection
 from schemas.incidents import IncidentStatusUpdateRequest, IncidentResponse
 from schemas.common import ApiResponse, ApiErrorResponse
 from utils.audit import record_audit_log
@@ -16,9 +16,32 @@ def list_incidents(
     severity: Optional[str] = None,
     status: Optional[str] = None,
     department: Optional[str] = None,
+    include_demo: bool = Query(False, description="Include Development / Test Only demo email incidents"),
     limit: int = Query(100, ge=1, le=500)
 ):
     query: Dict[str, Any] = {}
+    if not include_demo:
+        query["is_demo"] = {"$ne": True}
+        demo_asset_ids = [
+            doc.get("asset_id")
+            for doc in get_assets_collection().find(
+                {
+                    "$or": [
+                        {"is_demo": True},
+                        {"email_metadata.is_demo": True},
+                        {"email_metadata.simulated": True},
+                        {"ingestion_mode": "DEMO"},
+                        {"email_metadata.ingestion_mode": "DEMO"},
+                        {"source": {"$regex": "DEV/TEST DEMO|Simulated", "$options": "i"}}
+                    ]
+                },
+                {"asset_id": 1, "_id": 0}
+            )
+            if doc.get("asset_id")
+        ]
+        if demo_asset_ids:
+            query["asset_id"] = {"$nin": demo_asset_ids}
+
     if severity and severity.upper() != "ALL":
         query["severity"] = {"$regex": f"^{severity}$", "$options": "i"}
     if status and status.upper() != "ALL":

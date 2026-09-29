@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   FileSearch, 
   ShieldCheck, 
@@ -13,43 +14,94 @@ import {
   Cpu,
   Mail,
   Shield,
-  ArrowRight
+  ArrowRight,
+  UploadCloud
 } from 'lucide-react';
 import { useSecurity } from '../context/SecurityContext';
+import { assetsApi } from '../utils/api';
 import TrustScoreBadge from '../components/common/TrustScoreBadge';
 import RiskBadge from '../components/common/RiskBadge';
 import StatusBadge from '../components/common/StatusBadge';
+import EmptyState from '../components/common/EmptyState';
 import { getTrustLevel } from '../utils/trustCalculator';
 
 export default function TrustAnalysis() {
   const { assets } = useSecurity();
   const [selectedAssetId, setSelectedAssetId] = useState(assets[0]?.id || '');
+  const [detailData, setDetailData] = useState(null);
 
-  const asset = assets.find((a) => a.id === selectedAssetId) || assets[0];
+  const baseAsset = assets.find((a) => a.id === selectedAssetId) || assets[0];
 
-  if (!asset) {
+  useEffect(() => {
+    if (baseAsset?.id) {
+      assetsApi.getAsset(baseAsset.id)
+        .then((res) => {
+          if (res?.data) {
+            setDetailData(res.data);
+          }
+        })
+        .catch(() => {
+          setDetailData(null);
+        });
+    }
+  }, [baseAsset?.id]);
+
+  if (!baseAsset) {
     return (
-      <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-        No assets available for analysis. Please upload an asset first.
-      </div>
+      <EmptyState
+        icon={Layers}
+        title="No digital assets uploaded."
+        description="Upload a digital asset to inspect its 7-layer trust score breakdown and integrity factor evaluation."
+        action={
+          <Link to="/upload" className="btn btn-primary btn-sm">
+            <UploadCloud size={15} />
+            <span>Upload Asset</span>
+          </Link>
+        }
+      />
     );
   }
 
+  const verDoc = detailData?.verification;
+  const dbChecks = verDoc
+    ? Object.entries(verDoc)
+        .filter(([k]) => k.startsWith('layer_'))
+        .map(([k, v]) => ({
+          name: k.replace(/^layer_\d+_/, '').replace(/_/g, ' ').toUpperCase(),
+          passed: (v?.score ?? v?.trust_score ?? 0) >= 60,
+          detail: v?.status || v?.message || (v?.error ? `Flagged: ${v.error}` : `Layer score: ${v?.score ?? v?.trust_score ?? 'N/A'}`)
+        }))
+    : [];
+
+  const dbRecs = Array.isArray(detailData?.recommendations)
+    ? detailData.recommendations.map(r => r.recommendation || r).filter(Boolean)
+    : [];
+
+  const asset = {
+    ...baseAsset,
+    factors: detailData?.trust_score?.factors || baseAsset.factors || {},
+    checks: dbChecks.length > 0 ? dbChecks : (baseAsset.checks || []),
+    recommendations: dbRecs.length > 0 ? dbRecs : (baseAsset.recommendations || [])
+  };
+
   const score = asset.trustScore;
+  const hasScore = typeof score === 'number';
   const { level, color, risk } = getTrustLevel(score);
 
-  const factors = asset.factors || {
-    sourceReliability: 90,
-    integrity: 95,
-    contentConsistency: 82,
-    metadata: 86,
-    historicalBehaviour: 88
-  };
+  const rawFactors = asset.factors || {};
+  const factorItems = [
+    { label: "File Integrity", value: rawFactors.integrity ?? null, desc: "Cryptographic SHA-256 hash verification and block integrity." },
+    { label: "Metadata Validation", value: rawFactors.metadata ?? null, desc: "Creation dates, author tokens, and header structure." },
+    { label: "Document Structure", value: rawFactors.structure ?? null, desc: "Internal document object tree and format conformity." },
+    { label: "Content Consistency", value: rawFactors.content ?? rawFactors.contentConsistency ?? null, desc: "Threat keyword scanning and semantic consistency." },
+    { label: "Privacy / PII Check", value: rawFactors.privacy ?? rawFactors.sourceReliability ?? null, desc: "Plain-text sensitive PII exposure detection." },
+    { label: "Anomaly Detection", value: rawFactors.anomaly ?? rawFactors.historicalBehaviour ?? null, desc: "Isolation Forest statistical feature evaluation." }
+  ].filter(f => f.value !== null && f.value !== undefined);
 
   // Circular gauge SVG calculations
   const radius = 80;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (score / 100) * circumference;
+  const strokeDashoffset = hasScore ? circumference - (score / 100) * circumference : circumference;
 
   return (
     <div>
@@ -69,13 +121,13 @@ export default function TrustAnalysis() {
           <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Select Asset:</span>
           <select
             className="input-field"
-            value={selectedAssetId}
+            value={asset.id}
             onChange={(e) => setSelectedAssetId(e.target.value)}
             style={{ width: '280px', fontWeight: 600 }}
           >
             {assets.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.name} ({a.trustScore}/100)
+                {a.name} ({typeof a.trustScore === 'number' ? `${a.trustScore}/100` : 'Awaiting verification'})
               </option>
             ))}
           </select>
@@ -134,11 +186,11 @@ export default function TrustAnalysis() {
               textAlign: 'center'
             }}
           >
-            <div className="font-mono" style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>
-              {score}
+            <div className="font-mono" style={{ fontSize: hasScore ? '2.5rem' : '0.95rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
+              {hasScore ? score : 'Awaiting'}
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '0.2rem' }}>
-              / 100
+              {hasScore ? '/ 100' : 'Verification'}
             </div>
           </div>
         </div>
@@ -163,7 +215,7 @@ export default function TrustAnalysis() {
           </div>
 
           <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: '700px' }}>
-            TrustSphere decision engine evaluated this digital artifact across origin provenance, structural consistency, and cryptographic envelope sealing. Status confirmed as <strong style={{ color }}>{level}</strong>.
+            TrustSphere 7-layer verification pipeline evaluated this digital asset across file integrity, metadata, structure, content, privacy, and anomaly detection. Status: <strong style={{ color }}>{level}</strong>.
           </p>
         </div>
       </div>
@@ -176,42 +228,42 @@ export default function TrustAnalysis() {
             Analysis Factors Breakdown
           </h3>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {[
-              { label: "Source Reliability", value: factors.sourceReliability, desc: "Originating network domain and identity certainty." },
-              { label: "Integrity", value: factors.integrity, desc: "Absence of unauthorized bit modifications or trailer injection." },
-              { label: "Content Consistency", value: factors.contentConsistency, desc: "Internal semantic and schema layout conformity." },
-              { label: "Metadata Validation", value: factors.metadata, desc: "Creation dates, author tokens, and software signature match." },
-              { label: "Historical Behaviour", value: factors.historicalBehaviour, desc: "Sender reputation and department baseline pattern alignment." }
-            ].map((f) => {
-              const fColor = f.value >= 80 ? 'var(--trust-75)' : f.value >= 60 ? 'var(--trust-60)' : 'var(--trust-0)';
-              return (
-                <div key={f.label}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
-                      {f.label}
-                    </span>
-                    <span className="font-mono" style={{ fontWeight: 700, color: fColor, fontSize: '0.9rem' }}>
-                      {f.value}
-                    </span>
+          {factorItems.length === 0 ? (
+            <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              Awaiting verification factor scores.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {factorItems.map((f) => {
+                const fColor = f.value >= 80 ? 'var(--trust-75)' : f.value >= 60 ? 'var(--trust-60)' : 'var(--trust-0)';
+                return (
+                  <div key={f.label}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                      <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                        {f.label}
+                      </span>
+                      <span className="font-mono" style={{ fontWeight: 700, color: fColor, fontSize: '0.9rem' }}>
+                        {f.value}
+                      </span>
+                    </div>
+                    <div style={{ width: '100%', height: '8px', backgroundColor: 'rgba(255, 255, 255, 0.06)', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.35rem' }}>
+                      <div 
+                        style={{
+                          width: `${f.value}%`,
+                          height: '100%',
+                          backgroundColor: fColor,
+                          borderRadius: '4px',
+                          boxShadow: `0 0 8px ${fColor}`,
+                          transition: 'width 0.8s ease'
+                        }}
+                      />
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{f.desc}</span>
                   </div>
-                  <div style={{ width: '100%', height: '8px', backgroundColor: 'rgba(255, 255, 255, 0.06)', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.35rem' }}>
-                    <div 
-                      style={{
-                        width: `${f.value}%`,
-                        height: '100%',
-                        backgroundColor: fColor,
-                        borderRadius: '4px',
-                        boxShadow: `0 0 8px ${fColor}`,
-                        transition: 'width 0.8s ease'
-                      }}
-                    />
-                  </div>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{f.desc}</span>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Verification Checks & Warnings */}
@@ -220,41 +272,42 @@ export default function TrustAnalysis() {
             Core Verification Checks
           </h3>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', marginBottom: '1.5rem' }}>
-            {(asset.checks || [
-              { name: "File Integrity", passed: true, detail: "Cryptographic hash verified." },
-              { name: "Source Verification", passed: true, detail: "Origin gateway authenticated." },
-              { name: "Metadata Validation", passed: true, detail: "Producer stamps intact." },
-              { name: "Content Consistency", passed: true, detail: "Syntax heuristics aligned." }
-            ]).map((chk, i) => (
-              <div 
-                key={i}
-                style={{
-                  padding: '0.85rem 1rem',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: chk.passed ? 'rgba(16, 185, 129, 0.05)' : 'rgba(239, 68, 68, 0.08)',
-                  border: chk.passed ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.35)',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '0.75rem'
-                }}
-              >
-                {chk.passed ? (
-                  <CheckCircle2 size={18} color="var(--trust-75)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                ) : (
-                  <AlertCircle size={18} color="var(--trust-0)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                )}
-                <div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: chk.passed ? '#34D399' : '#F87171' }}>
-                    {chk.passed ? `✓ ${chk.name}` : `✕ ${chk.name}`}
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
-                    {chk.detail}
+          {asset.checks.length === 0 ? (
+            <div style={{ padding: '1.25rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+              Awaiting verification layer diagnostics.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', marginBottom: '1.5rem' }}>
+              {asset.checks.map((chk, i) => (
+                <div 
+                  key={i}
+                  style={{
+                    padding: '0.85rem 1rem',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: chk.passed ? 'rgba(16, 185, 129, 0.05)' : 'rgba(239, 68, 68, 0.08)',
+                    border: chk.passed ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.35)',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.75rem'
+                  }}
+                >
+                  {chk.passed ? (
+                    <CheckCircle2 size={18} color="var(--trust-75)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  ) : (
+                    <AlertCircle size={18} color="var(--trust-0)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  )}
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: chk.passed ? '#34D399' : '#F87171' }}>
+                      {chk.passed ? `✓ ${chk.name}` : `✕ ${chk.name}`}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
+                      {chk.detail}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           {/* Anomaly Warnings */}
           {asset.anomalies && asset.anomalies.length > 0 && (
@@ -278,18 +331,20 @@ export default function TrustAnalysis() {
             <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>
               Decision Intelligence Recommendations
             </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {(asset.recommendations || [
-                "Review source information",
-                "Verify modification history",
-                "Monitor related assets"
-              ]).map((rec, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--accent-cyan)' }} />
-                  <span>{rec}</span>
-                </div>
-              ))}
-            </div>
+            {asset.recommendations.length === 0 ? (
+              <div style={{ fontSize: '0.825rem', color: 'var(--text-muted)' }}>
+                No additional governance actions required.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {asset.recommendations.map((rec, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--accent-cyan)' }} />
+                    <span>{rec}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

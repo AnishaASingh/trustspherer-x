@@ -1010,22 +1010,36 @@ def get_recent_ingested_emails(limit: int = 25, include_demo: bool = False) -> L
 
     # 1. Query MongoDB `assets` collection for persisted email-ingested assets
     try:
+        mongo_query: Dict[str, Any] = {
+            "$or": [
+                {"email_metadata": {"$exists": True, "$ne": None}},
+                {"source": {"$regex": "Email Ingestion|Gmail", "$options": "i"}}
+            ]
+        }
+        if not include_demo:
+            mongo_query["$and"] = [
+                {"is_demo": {"$ne": True}},
+                {"email_metadata.is_demo": {"$ne": True}},
+                {"email_metadata.simulated": {"$ne": True}},
+                {"ingestion_mode": {"$ne": "DEMO"}},
+                {"email_metadata.ingestion_mode": {"$ne": "DEMO"}},
+                {"source": {"$not": {"$regex": "DEV/TEST DEMO|Simulated", "$options": "i"}}}
+            ]
         db_assets = list(
-            get_assets_collection().find(
-                {
-                    "$or": [
-                        {"email_metadata": {"$exists": True, "$ne": None}},
-                        {"source": {"$regex": "Email Ingestion|Gmail", "$options": "i"}}
-                    ]
-                }
-            ).sort("created_at", -1).limit(limit * 2)
+            get_assets_collection().find(mongo_query).sort("created_at", -1).limit(limit * 2)
         )
     except Exception:
         db_assets = []
 
     for asset in db_assets:
         meta = asset.get("email_metadata") or {}
-        is_demo = bool(asset.get("is_demo") or meta.get("is_demo") or meta.get("simulated") or meta.get("ingestion_mode") == "DEMO")
+        is_demo = bool(
+            asset.get("is_demo")
+            or meta.get("is_demo")
+            or meta.get("simulated")
+            or asset.get("ingestion_mode") == "DEMO"
+            or meta.get("ingestion_mode") == "DEMO"
+        )
         if not include_demo and is_demo:
             continue
 

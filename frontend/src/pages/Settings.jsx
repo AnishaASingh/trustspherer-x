@@ -23,13 +23,13 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState('profile');
 
   // Profile Form
-  const [profileName, setProfileName] = useState(user?.name || "Anisha Sharma");
-  const [profileEmail, setProfileEmail] = useState(user?.email || "admin@trustsphere.corp");
-  const [profileRole, setProfileRole] = useState(user?.role || "Chief Trust Officer & Security Admin");
+  const [profileName, setProfileName] = useState(user?.name || '');
+  const [profileEmail, setProfileEmail] = useState(user?.email || '');
+  const [profileRole, setProfileRole] = useState(user?.role || '');
 
   // Organization Form
-  const [orgName, setOrgName] = useState(organization?.name || "TrustSphere Global Corp");
-  const [orgIndustry, setOrgIndustry] = useState(organization?.industry || "Cybersecurity & Financial Intelligence");
+  const [orgName, setOrgName] = useState(organization?.name || 'TrustSphere Enterprise');
+  const [orgIndustry, setOrgIndustry] = useState(organization?.industry || 'Enterprise Digital Trust');
 
   // Security Settings
   const [currentPassword, setCurrentPassword] = useState('');
@@ -210,11 +210,11 @@ export default function Settings() {
             </div>
 
             <div className="input-group">
-              <label className="input-label">Security Standards Enforced</label>
+              <label className="input-label">Verification Engine</label>
               <input 
                 type="text" 
                 className="input-field" 
-                value="SOC 2 Type II, ISO 27001, NIST 800-53"
+                value="7-Layer Digital Asset & Email Verification Pipeline"
                 disabled
               />
             </div>

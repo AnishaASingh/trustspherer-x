@@ -43,23 +43,33 @@ export default function AssetDetails() {
   // Find asset in SecurityContext state
   const contextAsset = assets.find((a) => a.id === id || a.asset_id === id);
 
-  // If page was refreshed directly on URL, fetch directly from MongoDB via FastAPI
+  // Fetch full verification and trust score details from MongoDB via FastAPI
   useEffect(() => {
-    if (!contextAsset && id) {
-      setDirectLoading(true);
+    if (id) {
+      if (!contextAsset) setDirectLoading(true);
       assetsApi.getAsset(id)
         .then((res) => {
           if (res?.data?.asset) {
+            const ver = res.data.verification;
+            const builtChecks = ver
+              ? Object.entries(ver)
+                  .filter(([k]) => k.startsWith('layer_'))
+                  .map(([k, v]) => ({
+                    name: k.replace(/^layer_\d+_/, '').replace(/_/g, ' ').toUpperCase(),
+                    passed: (v?.score ?? v?.trust_score ?? 0) >= 60,
+                    detail: v?.status || v?.message || (v?.error ? `Flagged: ${v.error}` : `Layer score: ${v?.score ?? v?.trust_score ?? 'N/A'}`)
+                  }))
+              : null;
             const fullDoc = {
               ...res.data.asset,
-              checks: res.data.verification ? Object.entries(res.data.verification).filter(([k]) => k.startsWith('layer_')).map(([k, v]) => ({
-                name: k.replace('layer_', '').replace(/_/g, ' ').toUpperCase(),
-                passed: (v?.score || 0) >= 60,
-                detail: v?.status || (v?.error ? `Flagged: ${v.error}` : 'Verified')
-              })) : null,
-              factors: res.data.trust_score?.factors || null
+              checks: builtChecks && builtChecks.length > 0 ? builtChecks : res.data.asset.checks,
+              factors: res.data.trust_score?.factors || res.data.asset.factors || null
             };
             setFetchedAsset(mapBackendAsset(fullDoc));
+          }
+          if (Array.isArray(res?.data?.recommendations)) {
+            const list = res.data.recommendations.map(r => r.recommendation || r).filter(Boolean);
+            if (list.length > 0) setBackendRecommendations(list);
           }
         })
         .catch((err) => {
@@ -67,23 +77,9 @@ export default function AssetDetails() {
         })
         .finally(() => setDirectLoading(false));
     }
-  }, [id, contextAsset]);
+  }, [id]);
 
   const asset = fetchedAsset || contextAsset;
-
-  // Load backend recommendations for this asset
-  useEffect(() => {
-    if (asset?.id) {
-      assetsApi.getAssetRecommendations(asset.id)
-        .then((res) => {
-          if (res?.data?.recommendations) {
-            const list = res.data.recommendations.map(r => r.recommendation || r).filter(Boolean);
-            if (list.length > 0) setBackendRecommendations(list);
-          }
-        })
-        .catch(() => {});
-    }
-  }, [asset?.id]);
 
   if (directLoading) {
     return (
@@ -124,7 +120,7 @@ export default function AssetDetails() {
     try {
       const res = await assetsApi.reanalyzeAsset(asset.id);
       if (res?.success && res?.data) {
-        const reanalyzed = mapBackendAsset(res.data);
+        const reanalyzed = mapBackendAsset({ ...asset, ...res.data });
         setFetchedAsset(reanalyzed);
         addToast(`Re-analysis complete for ${asset.name}. Verified score: ${reanalyzed.trustScore}/100.`, 'success');
         logActivity('Asset re-analyzed', asset.name, `Integrity re-verified. Score: ${reanalyzed.trustScore}/100`, 'SUCCESS', asset.id);
@@ -157,21 +153,15 @@ export default function AssetDetails() {
   const aiData = liveAiResult || asset.ai_insights;
   const isDemoEmail = Boolean(asset.is_demo || asset.email_metadata?.is_demo || asset.email_metadata?.simulated);
 
-  const factors = asset.factors || {
-    sourceReliability: 85,
-    integrity: 90,
-    contentConsistency: 80,
-    metadata: 85,
-    historicalBehaviour: 85
-  };
-
+  const rawFactors = asset.factors || {};
   const factorList = [
-    { label: "Source Reliability", value: factors.sourceReliability },
-    { label: "Integrity Verification", value: factors.integrity },
-    { label: "Content Consistency", value: factors.contentConsistency },
-    { label: "Metadata Validation", value: factors.metadata },
-    { label: "Historical Behaviour", value: factors.historicalBehaviour }
-  ];
+    { label: "File Integrity", value: rawFactors.integrity ?? null },
+    { label: "Metadata Validation", value: rawFactors.metadata ?? null },
+    { label: "Document Structure", value: rawFactors.structure ?? null },
+    { label: "Content Consistency", value: rawFactors.content ?? rawFactors.contentConsistency ?? null },
+    { label: "Privacy / PII Check", value: rawFactors.privacy ?? rawFactors.sourceReliability ?? null },
+    { label: "Anomaly Detection", value: rawFactors.anomaly ?? rawFactors.historicalBehaviour ?? null }
+  ].filter(f => f.value !== null && f.value !== undefined);
 
   return (
     <div>

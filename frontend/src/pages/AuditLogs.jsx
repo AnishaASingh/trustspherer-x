@@ -138,8 +138,8 @@ export default function AuditLogs() {
       {filteredLogs.length === 0 ? (
         <EmptyState 
           icon={History}
-          title="No audit entries found"
-          description="No activity entries match your current search criteria."
+          title={auditLogs.length === 0 ? "No audit activity yet." : "No audit entries found"}
+          description={auditLogs.length === 0 ? "System activities, user actions, uploads, and security events will appear here." : "No activity entries match your current search criteria."}
         />
       ) : (
         <div className="table-container">

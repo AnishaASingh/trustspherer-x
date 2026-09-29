@@ -99,7 +99,7 @@ export default function Dashboard() {
       <div className="grid-stats">
         <StatCard
           title="Trust Score"
-          value={`${metrics.overallTrustScore} / 100`}
+          value={metrics.overallTrustScore !== null && metrics.overallTrustScore !== undefined ? `${metrics.overallTrustScore} / 100` : "Awaiting verification"}
           subtitle="Organization Trust Index"
           icon={ShieldCheck}
           accentColor="var(--trust-75)"
@@ -144,13 +144,13 @@ export default function Dashboard() {
                 Trust Score Trend
               </h3>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                6-month organizational trust trajectory
+                Historical trust trajectory from verified database assets
               </p>
             </div>
           </div>
 
           <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-            <TrustTrendChart />
+            <TrustTrendChart data={metrics.trendData} />
           </div>
         </div>
 
@@ -325,39 +325,47 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {recentIncidents.map((inc) => (
-                <tr key={inc.id}>
-                  <td>
-                    <Link
-                      to={`/incidents/${inc.id}`}
-                      className="font-mono"
-                      style={{ color: 'var(--accent-cyan)', fontWeight: 600, textDecoration: 'none' }}
-                    >
-                      {inc.id}
-                    </Link>
-                  </td>
-                  <td>
-                    <div style={{ fontWeight: 500 }}>{inc.relatedAssetName}</div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{inc.title}</div>
-                  </td>
-                  <td>
-                    <RiskBadge risk={inc.severity} size="sm" />
-                  </td>
-                  <td>{inc.department}</td>
-                  <td>
-                    <StatusBadge status={inc.status} />
-                  </td>
-                  <td className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                    {inc.detectedDate}
-                  </td>
-                  <td>
-                    <Link to={`/incidents/${inc.id}`} className="btn btn-ghost btn-sm" style={{ color: 'var(--accent-cyan)' }}>
-                      <Eye size={14} />
-                      <span>Details</span>
-                    </Link>
+              {recentIncidents.length === 0 ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)' }}>
+                    No incidents recorded.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                recentIncidents.map((inc) => (
+                  <tr key={inc.id}>
+                    <td>
+                      <Link
+                        to={`/incidents/${inc.id}`}
+                        className="font-mono"
+                        style={{ color: 'var(--accent-cyan)', fontWeight: 600, textDecoration: 'none' }}
+                      >
+                        {inc.id}
+                      </Link>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 500 }}>{inc.relatedAssetName}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{inc.title}</div>
+                    </td>
+                    <td>
+                      <RiskBadge risk={inc.severity} size="sm" />
+                    </td>
+                    <td>{inc.department}</td>
+                    <td>
+                      <StatusBadge status={inc.status} />
+                    </td>
+                    <td className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      {inc.detectedDate}
+                    </td>
+                    <td>
+                      <Link to={`/incidents/${inc.id}`} className="btn btn-ghost btn-sm" style={{ color: 'var(--accent-cyan)' }}>
+                        <Eye size={14} />
+                        <span>Details</span>
+                      </Link>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

@@ -387,15 +387,15 @@ export default function Navbar({ onToggleSidebar }) {
                 justifyContent: 'center'
               }}
             >
-              {user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'AS'}
+              {user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U'}
             </div>
 
             <div style={{ textAlign: 'left', display: 'none' }} className="nav-profile-text">
               <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                {user?.name || "Admin"}
+                {user?.name || "Authenticated User"}
               </div>
               <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                {user?.role || "Security Lead"}
+                {user?.role || "USER"}
               </div>
             </div>
 
@@ -418,8 +418,8 @@ export default function Navbar({ onToggleSidebar }) {
               }}
             >
               <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{user?.name || "Anisha Sharma"}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{user?.email || "admin@trustsphere.corp"}</div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{user?.name || "Authenticated User"}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{user?.email || "—"}</div>
               </div>
 
               <div style={{ padding: '0.4rem' }}>

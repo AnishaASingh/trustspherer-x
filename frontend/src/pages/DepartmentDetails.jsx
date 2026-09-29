@@ -80,14 +80,21 @@ export default function DepartmentDetails() {
   const deptAssets = assets.filter((a) => a.department.toLowerCase().includes(dept.name.toLowerCase()));
   const deptIncidents = incidents.filter((i) => i.department.toLowerCase().includes(dept.name.toLowerCase()));
 
-  const trendData = (dept.trustTrend || [
-    { label: "Apr", score: 80 },
-    { label: "May", score: 82 },
-    { label: "Jun", score: 84 },
-    { label: "Jul", score: 83 },
-    { label: "Aug", score: 85 },
-    { label: "Sep", score: dept.trustScore }
-  ]).map(t => ({ label: t.month || t.label, score: t.score }));
+  const trendByDate = {};
+  deptAssets.forEach((a) => {
+    if (a.trustScore !== null && a.trustScore !== undefined && a.uploadDate) {
+      const label = String(a.uploadDate).substring(5, 10) || 'Recent';
+      if (!trendByDate[label]) trendByDate[label] = [];
+      trendByDate[label].push(Number(a.trustScore));
+    }
+  });
+  const computedTrend = Object.entries(trendByDate).map(([label, scores]) => ({
+    label,
+    score: Math.round(scores.reduce((s, v) => s + v, 0) / scores.length)
+  }));
+  const trendData = Array.isArray(dept.trustTrend) && dept.trustTrend.length > 0
+    ? dept.trustTrend.map(t => ({ label: t.month || t.label, score: t.score }))
+    : computedTrend;
 
   return (
     <div>
@@ -157,8 +164,8 @@ export default function DepartmentDetails() {
             }}
           >
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Department Trust</div>
-            <div className="font-mono" style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-cyan)' }}>
-              {dept.trustScore} / 100
+            <div className="font-mono" style={{ fontSize: dept.trustScore !== null && dept.trustScore !== undefined ? '2rem' : '1.1rem', fontWeight: 800, color: 'var(--accent-cyan)' }}>
+              {dept.trustScore !== null && dept.trustScore !== undefined ? `${dept.trustScore} / 100` : 'Awaiting verification'}
             </div>
             <TrustScoreBadge score={dept.trustScore} showScore={false} size="sm" />
           </div>
@@ -197,9 +204,9 @@ export default function DepartmentDetails() {
           </div>
 
           <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Budget Risk Rating</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Compliance Status</div>
             <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', marginTop: '0.2rem' }}>
-              {dept.budgetRiskRating || "Standard"}
+              {dept.complianceStatus || (deptAssets.length > 0 ? 'Verified' : 'Awaiting verification')}
             </div>
           </div>
         </div>
@@ -211,7 +218,7 @@ export default function DepartmentDetails() {
         <div className="glass-panel" style={{ padding: '1.5rem' }}>
           <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <TrendingUp size={18} color="var(--accent-cyan)" />
-            6-Month Department Trust Trajectory
+            Department Trust Trajectory
           </h3>
           <TrustTrendChart data={trendData} height={220} />
         </div>
@@ -224,29 +231,31 @@ export default function DepartmentDetails() {
           </h3>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-            {(dept.keyPolicies || [
-              "Mandatory dual-signoff on all critical assets",
-              "Bi-weekly audit review of ingress files",
-              "Enforce hardware token MFA across team members"
-            ]).map((policy, idx) => (
-              <div 
-                key={idx}
-                style={{
-                  padding: '0.85rem 1rem',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--border-subtle)',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '0.65rem'
-                }}
-              >
-                <span style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>#{idx + 1}</span>
-                <span style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                  {policy}
-                </span>
+            {Array.isArray(dept.keyPolicies) && dept.keyPolicies.length > 0 ? (
+              dept.keyPolicies.map((policy, idx) => (
+                <div 
+                  key={idx}
+                  style={{
+                    padding: '0.85rem 1rem',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.65rem'
+                  }}
+                >
+                  <span style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>#{idx + 1}</span>
+                  <span style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                    {policy}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                No custom department governance directives configured. Standard 7-layer verification applies to all department assets.
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
@@ -266,35 +275,41 @@ export default function DepartmentDetails() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-            {deptAssets.slice(0, 5).map((a) => (
-              <div 
-                key={a.id}
-                style={{
-                  padding: '0.65rem 0.85rem',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--border-subtle)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}
-              >
-                <div>
-                  <Link to={`/assets/${a.id}`} style={{ fontWeight: 600, color: 'var(--text-primary)', textDecoration: 'none', fontSize: '0.85rem' }}>
-                    {a.name}
-                  </Link>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    {a.id} • {a.type}
+            {deptAssets.length === 0 ? (
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                No digital assets uploaded.
+              </div>
+            ) : (
+              deptAssets.slice(0, 5).map((a) => (
+                <div 
+                  key={a.id}
+                  style={{
+                    padding: '0.65rem 0.85rem',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
+                >
+                  <div>
+                    <Link to={`/assets/${a.id}`} style={{ fontWeight: 600, color: 'var(--text-primary)', textDecoration: 'none', fontSize: '0.85rem' }}>
+                      {a.name}
+                    </Link>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                      {a.id} • {a.type}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <TrustScoreBadge score={a.trustScore} size="sm" />
+                    <Link to={`/assets/${a.id}`} className="btn btn-ghost btn-sm" style={{ padding: '0.25rem' }}>
+                      <ExternalLink size={13} color="var(--accent-cyan)" />
+                    </Link>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <TrustScoreBadge score={a.trustScore} size="sm" />
-                  <Link to={`/assets/${a.id}`} className="btn btn-ghost btn-sm" style={{ padding: '0.25rem' }}>
-                    <ExternalLink size={13} color="var(--accent-cyan)" />
-                  </Link>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -311,35 +326,41 @@ export default function DepartmentDetails() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-            {deptEmployees.map((e) => (
-              <div 
-                key={e.id}
-                style={{
-                  padding: '0.65rem 0.85rem',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--border-subtle)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}
-              >
-                <div>
-                  <Link to={`/employees/${e.id}`} style={{ fontWeight: 600, color: 'var(--text-primary)', textDecoration: 'none', fontSize: '0.85rem' }}>
-                    {e.name}
-                  </Link>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    {e.role}
+            {deptEmployees.length === 0 ? (
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                No employees added yet.
+              </div>
+            ) : (
+              deptEmployees.map((e) => (
+                <div 
+                  key={e.id}
+                  style={{
+                    padding: '0.65rem 0.85rem',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
+                >
+                  <div>
+                    <Link to={`/employees/${e.id}`} style={{ fontWeight: 600, color: 'var(--text-primary)', textDecoration: 'none', fontSize: '0.85rem' }}>
+                      {e.name}
+                    </Link>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                      {e.role}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <TrustScoreBadge score={e.trustScore} size="sm" />
+                    <Link to={`/employees/${e.id}`} className="btn btn-ghost btn-sm" style={{ padding: '0.25rem' }}>
+                      <ExternalLink size={13} color="var(--accent-cyan)" />
+                    </Link>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <TrustScoreBadge score={e.trustScore} size="sm" />
-                  <Link to={`/employees/${e.id}`} className="btn btn-ghost btn-sm" style={{ padding: '0.25rem' }}>
-                    <ExternalLink size={13} color="var(--accent-cyan)" />
-                  </Link>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>

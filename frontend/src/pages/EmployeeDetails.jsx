@@ -481,31 +481,37 @@ export default function EmployeeDetails() {
         </h3>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-          {(employee.activities || []).map((act, idx) => (
-            <div
-              key={idx}
-              style={{
-                padding: '0.75rem 1rem',
-                borderRadius: 'var(--radius-sm)',
-                backgroundColor: 'var(--bg-secondary)',
-                border: '1px solid var(--border-subtle)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                <CheckCircle2 size={16} color="var(--trust-75)" />
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{act.action}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <span className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{act.time}</span>
-                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: act.status === 'SUCCESS' ? 'var(--trust-75)' : act.status === 'BLOCKED' ? 'var(--trust-0)' : 'var(--trust-60)' }}>
-                  {act.status}
-                </span>
-              </div>
+          {(employee.activities || []).length === 0 ? (
+            <div style={{ padding: '1.25rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              No recorded activity for this employee yet.
             </div>
-          ))}
+          ) : (
+            (employee.activities || []).map((act, idx) => (
+              <div
+                key={idx}
+                style={{
+                  padding: '0.75rem 1rem',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-subtle)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <CheckCircle2 size={16} color="var(--trust-75)" />
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{act.action}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <span className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{act.time}</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: act.status === 'SUCCESS' ? 'var(--trust-75)' : act.status === 'BLOCKED' ? 'var(--trust-0)' : 'var(--trust-60)' }}>
+                    {act.status || act.risk || 'RECORDED'}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

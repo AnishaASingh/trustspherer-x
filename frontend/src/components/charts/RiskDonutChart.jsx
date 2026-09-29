@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 export default function RiskDonutChart({ 
-  data = { LOW: 180, MEDIUM: 42, HIGH: 18, CRITICAL: 8 },
+  data = { LOW: 0, MEDIUM: 0, HIGH: 0, CRITICAL: 0 },
   size = 200 
 }) {
   const [activeSegment, setActiveSegment] = useState(null);
@@ -13,7 +13,8 @@ export default function RiskDonutChart({
     { key: "CRITICAL", label: "Critical", color: "var(--trust-0)", value: data.CRITICAL || 0 }
   ];
 
-  const total = riskMeta.reduce((acc, curr) => acc + curr.value, 0) || 1;
+  const rawTotal = riskMeta.reduce((acc, curr) => acc + curr.value, 0);
+  const divisor = rawTotal || 1;
 
   // Compute SVG arc coordinates
   const radius = 75;
@@ -23,8 +24,8 @@ export default function RiskDonutChart({
   let cumulativeAngle = -Math.PI / 2;
 
   const segments = riskMeta.map((item) => {
-    const fraction = item.value / total;
-    const angle = fraction * 2 * Math.PI;
+    const fraction = rawTotal > 0 ? item.value / divisor : 0;
+    const angle = Math.min(fraction * 2 * Math.PI, 2 * Math.PI - 0.0001);
     const startAngle = cumulativeAngle;
     const endAngle = cumulativeAngle + angle;
     cumulativeAngle = endAngle;
@@ -41,18 +42,18 @@ export default function RiskDonutChart({
 
     const largeArcFlag = angle > Math.PI ? 1 : 0;
 
-    const pathData = [
+    const pathData = item.value > 0 ? [
       `M ${x1} ${y1}`,
       `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
       `L ${x3} ${y3}`,
       `A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4}`,
       'Z'
-    ].join(' ');
+    ].join(' ') : '';
 
     return {
       ...item,
       pathData,
-      percentage: Math.round(fraction * 100)
+      percentage: rawTotal > 0 ? Math.round(fraction * 100) : 0
     };
   });
 
@@ -60,23 +61,34 @@ export default function RiskDonutChart({
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
       <div style={{ position: 'relative', width: `${size}px`, height: `${size}px` }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          {segments.map((seg) => (
-            <path
-              key={seg.key}
-              d={seg.pathData}
-              fill={seg.color}
-              stroke="#060911"
-              strokeWidth="2"
-              opacity={activeSegment && activeSegment !== seg.key ? 0.45 : 0.9}
-              style={{
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                filter: activeSegment === seg.key ? `drop-shadow(0 0 8px ${seg.color})` : 'none'
-              }}
-              onMouseEnter={() => setActiveSegment(seg.key)}
-              onMouseLeave={() => setActiveSegment(null)}
+          {rawTotal === 0 ? (
+            <circle
+              cx={center}
+              cy={center}
+              r={(radius + innerRadius) / 2}
+              fill="none"
+              stroke="rgba(148, 163, 184, 0.2)"
+              strokeWidth={radius - innerRadius}
             />
-          ))}
+          ) : (
+            segments.filter(s => s.value > 0).map((seg) => (
+              <path
+                key={seg.key}
+                d={seg.pathData}
+                fill={seg.color}
+                stroke="#060911"
+                strokeWidth="2"
+                opacity={activeSegment && activeSegment !== seg.key ? 0.45 : 0.9}
+                style={{
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  filter: activeSegment === seg.key ? `drop-shadow(0 0 8px ${seg.color})` : 'none'
+                }}
+                onMouseEnter={() => setActiveSegment(seg.key)}
+                onMouseLeave={() => setActiveSegment(null)}
+              />
+            ))
+          )}
         </svg>
 
         {/* Center label */}
@@ -93,7 +105,7 @@ export default function RiskDonutChart({
           <div className="font-mono" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>
             {activeSegment 
               ? segments.find(s => s.key === activeSegment)?.value 
-              : total}
+              : rawTotal}
           </div>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             {activeSegment 

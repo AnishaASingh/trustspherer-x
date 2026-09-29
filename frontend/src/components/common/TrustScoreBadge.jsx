@@ -3,10 +3,12 @@ import { ShieldCheck, ShieldAlert, ShieldX, Shield } from 'lucide-react';
 import { getTrustLevel } from '../../utils/trustCalculator';
 
 export default function TrustScoreBadge({ score, showScore = true, size = 'normal' }) {
+  const isUnverified = score === null || score === undefined || score === '' || Number.isNaN(Number(score));
   const { level, badgeClass } = getTrustLevel(score);
 
   let Icon = ShieldCheck;
-  if (score < 40) Icon = ShieldX;
+  if (isUnverified) Icon = Shield;
+  else if (score < 40) Icon = ShieldX;
   else if (score < 60) Icon = ShieldAlert;
   else if (score < 75) Icon = Shield;
 
@@ -20,7 +22,7 @@ export default function TrustScoreBadge({ score, showScore = true, size = 'norma
       style={{ padding, fontSize, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
     >
       <Icon size={iconSize} />
-      {showScore && <strong className="font-mono">{score}/100</strong>}
+      {showScore && !isUnverified && <strong className="font-mono">{score}/100</strong>}
       <span>{level}</span>
     </span>
   );

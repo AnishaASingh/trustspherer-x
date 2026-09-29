@@ -35,8 +35,8 @@ export default function Reports() {
 
   const handleExportSummaryCSV = () => {
     const summaryData = [
-      { Metric: "Organization Name", Value: organization?.name || "TrustSphere Global Corp" },
-      { Metric: "Overall Trust Score", Value: `${metrics.overallTrustScore}/100` },
+      { Metric: "Organization Name", Value: organization?.name || "TrustSphere Enterprise" },
+      { Metric: "Overall Trust Score", Value: metrics.overallTrustScore !== null ? `${metrics.overallTrustScore}/100` : "Awaiting verification" },
       { Metric: "Total Assets", Value: metrics.totalAssets },
       { Metric: "Verified Assets", Value: metrics.verifiedAssets },
       { Metric: "High Risk Assets", Value: metrics.highRiskAssets },
@@ -99,19 +99,25 @@ export default function Reports() {
             ORGANIZATION TRUST INDEX
           </span>
           <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '0.2rem' }}>
-            {organization?.name || "TrustSphere Global Corp"}
+            {organization?.name || "TrustSphere Enterprise"}
           </h2>
           <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-            Report generated for audit committee • Evaluation window: Current Period 2026
+            Live database metrics • Account: {organization?.email || 'Authenticated Session'}
           </p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Consensus Trust</div>
-            <div className="font-mono" style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--accent-cyan)', lineHeight: 1 }}>
-              {metrics.overallTrustScore}
-              <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/100</span>
+            <div className="font-mono" style={{ fontSize: metrics.overallTrustScore !== null ? '2.25rem' : '1.1rem', fontWeight: 800, color: 'var(--accent-cyan)', lineHeight: 1 }}>
+              {metrics.overallTrustScore !== null && metrics.overallTrustScore !== undefined ? (
+                <>
+                  {metrics.overallTrustScore}
+                  <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/100</span>
+                </>
+              ) : (
+                'Awaiting verification'
+              )}
             </div>
           </div>
           <TrustScoreBadge score={metrics.overallTrustScore} size="normal" />
@@ -221,7 +227,7 @@ export default function Reports() {
         <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '1rem' }}>
           Organizational Trust Trajectory Trend
         </h3>
-        <TrustTrendChart height={220} />
+        <TrustTrendChart data={metrics.trendData} height={220} />
       </div>
 
       {/* Executive Recommendations */}
@@ -260,7 +266,7 @@ export default function Reports() {
             </h4>
             <p style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
               {departments.length > 0 
-                ? `${departments.length} active department(s) enrolled (${departments.slice(0, 4).map(d => d.name).join(', ')}) with organization consensus trust score of ${metrics.overallTrustScore}/100.`
+                ? `${departments.length} active department(s) enrolled (${departments.slice(0, 4).map(d => d.name).join(', ')}) with organization consensus trust score of ${metrics.overallTrustScore !== null ? `${metrics.overallTrustScore}/100` : 'Awaiting verification'}.`
                 : 'No departments currently registered. Onboard organizational departments to map access controls and asset ownership.'}
             </p>
           </div>
@@ -328,7 +334,7 @@ export default function Reports() {
               Executive Posture Summary
             </h4>
             <p style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
-              Organization currently maintains a consensus trust score of <strong style={{ color: 'var(--accent-cyan)' }}>{metrics.overallTrustScore}/100</strong> across {metrics.totalAssets} monitored asset(s) and {departments.length} department(s). {metrics.highRiskAssets > 0 ? `Attention is required for ${metrics.highRiskAssets} asset(s) identified with elevated anomaly indicators.` : 'No critical deviations detected in recent cryptographic or structural envelopes.'}
+              Organization currently maintains a consensus trust score of <strong style={{ color: 'var(--accent-cyan)' }}>{metrics.overallTrustScore !== null ? `${metrics.overallTrustScore}/100` : 'Awaiting verification'}</strong> across {metrics.totalAssets} monitored asset(s) and {departments.length} department(s). {metrics.highRiskAssets > 0 ? `Attention is required for ${metrics.highRiskAssets} asset(s) identified with elevated anomaly indicators.` : 'No critical deviations detected in recent cryptographic or structural envelopes.'}
             </p>
           </div>
 

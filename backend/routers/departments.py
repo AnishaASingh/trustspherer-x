@@ -21,23 +21,54 @@ router = APIRouter(
 )
 
 
+def _enrich_department_stats(d: Dict[str, Any]) -> Dict[str, Any]:
+    d["_id"] = str(d["_id"])
+    dept_name = d.get("name", "")
+    assets_col = get_assets_collection()
+    inc_col = get_incidents_collection()
+
+    real_dept_asset_query: Dict[str, Any] = {
+        "$and": [
+            {"department_id": {"$regex": f"^{dept_name}$", "$options": "i"}},
+            {"is_demo": {"$ne": True}},
+            {"email_metadata.is_demo": {"$ne": True}},
+            {"email_metadata.simulated": {"$ne": True}},
+            {"ingestion_mode": {"$ne": "DEMO"}},
+            {"email_metadata.ingestion_mode": {"$ne": "DEMO"}},
+            {"source": {"$not": {"$regex": "DEV/TEST DEMO|Simulated", "$options": "i"}}}
+        ]
+    }
+    dept_assets = list(assets_col.find(real_dept_asset_query, {"trust_score": 1, "_id": 0}))
+    asset_count = len(dept_assets)
+
+    d["employee_count"] = get_employees_collection().count_documents({
+        "department_id": {"$regex": f"^{dept_name}$", "$options": "i"}
+    })
+    d["asset_count"] = asset_count
+    d["incident_count"] = inc_col.count_documents({
+        "department_id": {"$regex": f"^{dept_name}$", "$options": "i"},
+        "is_demo": {"$ne": True}
+    })
+
+    scores = [float(a["trust_score"]) for a in dept_assets if isinstance(a.get("trust_score"), (int, float))]
+    if scores:
+        avg_score = round(sum(scores) / len(scores), 1)
+        d["trust_score"] = avg_score
+        d["risk_tier"] = "HIGH" if avg_score < 60 else ("MEDIUM" if avg_score < 75 else "LOW")
+        d["compliance_status"] = "VERIFIED"
+    else:
+        d["trust_score"] = None
+        d["risk_tier"] = "N/A"
+        d["compliance_status"] = "Awaiting verification"
+
+    return d
+
+
 @router.get("", response_model=ApiResponse[Dict[str, Any]])
 @router.get("/", response_model=ApiResponse[Dict[str, Any]])
 def list_departments():
     dept_col = get_departments_collection()
-    depts = list(dept_col.find())
-    for d in depts:
-        d["_id"] = str(d["_id"])
-        dept_name = d.get("name", "")
-        d["employee_count"] = get_employees_collection().count_documents({
-            "department_id": {"$regex": f"^{dept_name}$", "$options": "i"}
-        })
-        d["asset_count"] = get_assets_collection().count_documents({
-            "department_id": {"$regex": f"^{dept_name}$", "$options": "i"}
-        })
-        d["incident_count"] = get_incidents_collection().count_documents({
-            "department_id": {"$regex": f"^{dept_name}$", "$options": "i"}
-        })
+    depts = [_enrich_department_stats(d) for d in dept_col.find()]
 
     return ApiResponse(
         success=True,
@@ -102,17 +133,7 @@ def get_department(department_id: str):
             detail=f"Department '{department_id}' not found."
         )
 
-    dept["_id"] = str(dept["_id"])
-    dept_name = dept.get("name", "")
-    dept["employee_count"] = get_employees_collection().count_documents({
-        "department_id": {"$regex": f"^{dept_name}$", "$options": "i"}
-    })
-    dept["asset_count"] = get_assets_collection().count_documents({
-        "department_id": {"$regex": f"^{dept_name}$", "$options": "i"}
-    })
-    dept["incident_count"] = get_incidents_collection().count_documents({
-        "department_id": {"$regex": f"^{dept_name}$", "$options": "i"}
-    })
+    dept = _enrich_department_stats(dept)
 
     return ApiResponse(success=True, data={"department": dept})
 

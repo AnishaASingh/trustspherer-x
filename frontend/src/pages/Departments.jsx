@@ -85,12 +85,11 @@ export default function Departments() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                  {organization?.name || "TrustSphere Global Corp"}
+                  {organization?.name || "TrustSphere Enterprise"}
                 </h2>
-                <span className="badge badge-highly-trusted">SOC 2 COMPLIANT</span>
               </div>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
-                Industry: {organization?.industry || "Cybersecurity & Decision Trust"} • Tenant ID: {organization?.id || "ORG-88492"}
+                {organization?.email ? `Account: ${organization.email}` : 'Enterprise Security Governance'} • Role: {organization?.role || 'Administrator'}
               </p>
             </div>
           </div>
@@ -100,8 +99,8 @@ export default function Departments() {
               <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                 Overall Trust Score
               </div>
-              <div className="font-mono" style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--trust-75)' }}>
-                {metrics.overallTrustScore}/100
+              <div className="font-mono" style={{ fontSize: metrics.overallTrustScore !== null ? '1.85rem' : '1.1rem', fontWeight: 800, color: metrics.overallTrustScore !== null ? 'var(--trust-75)' : 'var(--text-muted)' }}>
+                {metrics.overallTrustScore !== null && metrics.overallTrustScore !== undefined ? `${metrics.overallTrustScore}/100` : 'Awaiting verification'}
               </div>
             </div>
             <TrustScoreBadge score={metrics.overallTrustScore} showScore={false} />
@@ -147,9 +146,9 @@ export default function Departments() {
           </div>
 
           <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Compliance Status</div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--trust-75)', marginTop: '0.2rem' }}>
-              Verified In-Policy
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Verification Posture</div>
+            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: assets.length > 0 ? 'var(--trust-75)' : 'var(--text-muted)', marginTop: '0.2rem' }}>
+              {assets.length > 0 ? `${metrics.verifiedAssets} / ${assets.length} Verified` : 'Awaiting verification'}
             </div>
           </div>
         </div>
@@ -161,117 +160,124 @@ export default function Departments() {
           Department Security Profiles
         </h3>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-          {departments.map((dept) => {
-            const { level, color } = getTrustLevel(dept.trustScore);
-            const deptAssets = assets.filter(a => a.department.toLowerCase().includes(dept.name.toLowerCase())).length;
-            const deptIncidents = incidents.filter(i => i.department.toLowerCase().includes(dept.name.toLowerCase()) && i.status !== 'RESOLVED').length;
+        {departments.length === 0 ? (
+          <div className="glass-panel" style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            No departments registered yet.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+            {departments.map((dept) => {
+              const { color } = getTrustLevel(dept.trustScore);
+              const hasScore = dept.trustScore !== null && dept.trustScore !== undefined;
+              const deptAssets = assets.filter(a => a.department.toLowerCase().includes(dept.name.toLowerCase())).length;
+              const deptIncidents = incidents.filter(i => i.department.toLowerCase().includes(dept.name.toLowerCase()) && i.status !== 'RESOLVED').length;
 
-            return (
-              <div 
-                key={dept.id}
-                className="glass-panel glass-panel-hover"
-                style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '1.25rem' }}
-              >
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                      <div 
-                        style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '8px',
-                          background: 'rgba(56, 189, 248, 0.08)',
-                          border: '1px solid var(--border-subtle)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'var(--accent-cyan)'
-                        }}
-                      >
-                        <Building2 size={18} />
+              return (
+                <div 
+                  key={dept.id}
+                  className="glass-panel glass-panel-hover"
+                  style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '1.25rem' }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                        <div 
+                          style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '8px',
+                            background: 'rgba(56, 189, 248, 0.08)',
+                            border: '1px solid var(--border-subtle)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--accent-cyan)'
+                          }}
+                        >
+                          <Building2 size={18} />
+                        </div>
+                        <div>
+                          <h4 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                            {dept.name}
+                          </h4>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Head: {dept.head}</span>
+                        </div>
+                      </div>
+
+                      <RiskBadge risk={dept.riskLevel} size="sm" />
+                    </div>
+
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                      {dept.description}
+                    </p>
+
+                    {/* Score & Progress */}
+                    <div style={{ marginBottom: '1.25rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.825rem', marginBottom: '0.35rem' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>Trust Score</span>
+                        <span className="font-mono" style={{ fontWeight: 700, color }}>
+                          {hasScore ? `${dept.trustScore} / 100` : 'Awaiting verification'}
+                        </span>
+                      </div>
+                      <div style={{ width: '100%', height: '6px', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
+                        <div 
+                          style={{
+                            width: hasScore ? `${dept.trustScore}%` : '0%',
+                            height: '100%',
+                            backgroundColor: color,
+                            borderRadius: '3px',
+                            boxShadow: hasScore ? `0 0 8px ${color}` : 'none'
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Department Telemetry Stats */}
+                    <div 
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: '0.5rem',
+                        padding: '0.75rem',
+                        background: 'rgba(0,0,0,0.25)',
+                        borderRadius: 'var(--radius-sm)',
+                        textAlign: 'center'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Staff</div>
+                        <div className="font-mono" style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>
+                          {dept.employeeCount}
+                        </div>
                       </div>
                       <div>
-                        <h4 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                          {dept.name}
-                        </h4>
-                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Head: {dept.head}</span>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Assets</div>
+                        <div className="font-mono" style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>
+                          {deptAssets || dept.assetCount}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Incidents</div>
+                        <div className="font-mono" style={{ fontWeight: 700, color: deptIncidents > 0 ? '#EF4444' : 'var(--trust-75)', fontSize: '0.95rem' }}>
+                          {deptIncidents}
+                        </div>
                       </div>
                     </div>
-
-                    <RiskBadge risk={dept.riskLevel} size="sm" />
                   </div>
 
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
-                    {dept.description}
-                  </p>
-
-                  {/* Score & Progress */}
-                  <div style={{ marginBottom: '1.25rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.825rem', marginBottom: '0.35rem' }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>Trust Score</span>
-                      <span className="font-mono" style={{ fontWeight: 700, color }}>
-                        {dept.trustScore} / 100
-                      </span>
-                    </div>
-                    <div style={{ width: '100%', height: '6px', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div 
-                        style={{
-                          width: `${dept.trustScore}%`,
-                          height: '100%',
-                          backgroundColor: color,
-                          borderRadius: '3px',
-                          boxShadow: `0 0 8px ${color}`
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Department Telemetry Stats */}
-                  <div 
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(3, 1fr)',
-                      gap: '0.5rem',
-                      padding: '0.75rem',
-                      background: 'rgba(0,0,0,0.25)',
-                      borderRadius: 'var(--radius-sm)',
-                      textAlign: 'center'
-                    }}
+                  <Link 
+                    to={`/departments/${dept.id}`} 
+                    className="btn btn-secondary"
+                    style={{ width: '100%', justifyContent: 'center' }}
                   >
-                    <div>
-                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Staff</div>
-                      <div className="font-mono" style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>
-                        {dept.employeeCount}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Assets</div>
-                      <div className="font-mono" style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>
-                        {deptAssets || dept.assetCount}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Incidents</div>
-                      <div className="font-mono" style={{ fontWeight: 700, color: deptIncidents > 0 ? '#EF4444' : 'var(--trust-75)', fontSize: '0.95rem' }}>
-                        {deptIncidents}
-                      </div>
-                    </div>
-                  </div>
+                    <span>Inspect Department</span>
+                    <ArrowRight size={14} />
+                  </Link>
                 </div>
-
-                <Link 
-                  to={`/departments/${dept.id}`} 
-                  className="btn btn-secondary"
-                  style={{ width: '100%', justifyContent: 'center' }}
-                >
-                  <span>Inspect Department</span>
-                  <ArrowRight size={14} />
-                </Link>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -20,32 +20,77 @@ def get_dashboard_metrics():
     emp_col = get_employees_collection()
     dept_col = get_departments_collection()
 
-    total_assets = assets_col.count_documents({})
-    total_incidents = inc_col.count_documents({})
+    real_asset_filter: Dict[str, Any] = {
+        "$and": [
+            {"is_demo": {"$ne": True}},
+            {"email_metadata.is_demo": {"$ne": True}},
+            {"email_metadata.simulated": {"$ne": True}},
+            {"ingestion_mode": {"$ne": "DEMO"}},
+            {"email_metadata.ingestion_mode": {"$ne": "DEMO"}},
+            {"source": {"$not": {"$regex": "DEV/TEST DEMO|Simulated", "$options": "i"}}}
+        ]
+    }
+    demo_asset_ids = [
+        doc.get("asset_id")
+        for doc in assets_col.find(
+            {
+                "$or": [
+                    {"is_demo": True},
+                    {"email_metadata.is_demo": True},
+                    {"email_metadata.simulated": True},
+                    {"ingestion_mode": "DEMO"},
+                    {"email_metadata.ingestion_mode": "DEMO"},
+                    {"source": {"$regex": "DEV/TEST DEMO|Simulated", "$options": "i"}}
+                ]
+            },
+            {"asset_id": 1, "_id": 0}
+        )
+        if doc.get("asset_id")
+    ]
+    real_inc_filter: Dict[str, Any] = {"is_demo": {"$ne": True}}
+    if demo_asset_ids:
+        real_inc_filter["asset_id"] = {"$nin": demo_asset_ids}
+
+    total_assets = assets_col.count_documents(real_asset_filter)
+    total_incidents = inc_col.count_documents(real_inc_filter)
     open_incidents = inc_col.count_documents({
+        **real_inc_filter,
         "status": {"$in": ["OPEN", "INVESTIGATING", "UNDER INVESTIGATION"]}
     })
     critical_incidents = inc_col.count_documents({
+        **real_inc_filter,
         "severity": {"$regex": "^CRITICAL", "$options": "i"}
     })
 
     high_risk_assets = assets_col.count_documents({
-        "$or": [
-            {"risk_level": {"$regex": "^High", "$options": "i"}},
-            {"risk_level": {"$regex": "^Critical", "$options": "i"}}
+        "$and": [
+            real_asset_filter,
+            {
+                "$or": [
+                    {"risk_level": {"$regex": "^High", "$options": "i"}},
+                    {"risk_level": {"$regex": "^Critical", "$options": "i"}}
+                ]
+            }
         ]
     })
     medium_risk_assets = assets_col.count_documents({
-        "risk_level": {"$regex": "^Medium", "$options": "i"}
+        "$and": [
+            real_asset_filter,
+            {"risk_level": {"$regex": "^Medium", "$options": "i"}}
+        ]
     })
     low_risk_assets = assets_col.count_documents({
-        "risk_level": {"$regex": "^Low", "$options": "i"}
+        "$and": [
+            real_asset_filter,
+            {"risk_level": {"$regex": "^Low", "$options": "i"}}
+        ]
     })
 
     # Average trust score calculation
     avg_score = 0.0
     if total_assets > 0:
         pipeline = [
+            {"$match": real_asset_filter},
             {"$group": {"_id": None, "avg_score": {"$avg": "$trust_score"}}}
         ]
         agg_result = list(assets_col.aggregate(pipeline))

@@ -38,27 +38,52 @@ def list_assets(
     risk_level: Optional[str] = None,
     status: Optional[str] = None,
     search: Optional[str] = None,
+    include_demo: bool = Query(False, description="Include Development / Test Only demo email records"),
     limit: int = Query(100, ge=1, le=500)
 ):
-    query: Dict[str, Any] = {}
+    and_clauses: List[Dict[str, Any]] = []
+    if not include_demo:
+        and_clauses.extend([
+            {"is_demo": {"$ne": True}},
+            {"email_metadata.is_demo": {"$ne": True}},
+            {"email_metadata.simulated": {"$ne": True}},
+            {"ingestion_mode": {"$ne": "DEMO"}},
+            {"email_metadata.ingestion_mode": {"$ne": "DEMO"}},
+            {"source": {"$not": {"$regex": "DEV/TEST DEMO|Simulated", "$options": "i"}}}
+        ])
     if department and department.upper() != "ALL":
-        query["department_id"] = {"$regex": f"^{department}$", "$options": "i"}
+        and_clauses.append({"department_id": {"$regex": f"^{department}$", "$options": "i"}})
     if risk_level and risk_level.upper() != "ALL":
-        query["risk_level"] = {"$regex": f"^{risk_level}", "$options": "i"}
+        and_clauses.append({"risk_level": {"$regex": f"^{risk_level}", "$options": "i"}})
     if status and status.upper() != "ALL":
-        query["status"] = {"$regex": f"^{status}$", "$options": "i"}
+        and_clauses.append({"status": {"$regex": f"^{status}$", "$options": "i"}})
     if search and search.strip():
         q = search.strip()
-        query["$or"] = [
-            {"filename": {"$regex": q, "$options": "i"}},
-            {"asset_id": {"$regex": q, "$options": "i"}},
-            {"file_hash": {"$regex": q, "$options": "i"}}
-        ]
+        and_clauses.append({
+            "$or": [
+                {"filename": {"$regex": q, "$options": "i"}},
+                {"asset_id": {"$regex": q, "$options": "i"}},
+                {"file_hash": {"$regex": q, "$options": "i"}}
+            ]
+        })
+
+    query: Dict[str, Any] = {"$and": and_clauses} if and_clauses else {}
 
     assets_col = get_assets_collection()
+    trust_col = get_trust_scores_collection()
     assets = list(assets_col.find(query).sort("upload_date", -1).limit(limit))
+
+    asset_ids = [a.get("asset_id") for a in assets if a.get("asset_id") and not a.get("factors")]
+    factors_map: Dict[str, Any] = {}
+    if asset_ids:
+        for ts_doc in trust_col.find({"asset_id": {"$in": asset_ids}}, {"asset_id": 1, "factors": 1, "_id": 0}):
+            if ts_doc.get("asset_id") and ts_doc.get("factors"):
+                factors_map[ts_doc["asset_id"]] = ts_doc["factors"]
+
     for a in assets:
         a["_id"] = str(a["_id"])
+        if not a.get("factors") and a.get("asset_id") in factors_map:
+            a["factors"] = factors_map[a["asset_id"]]
 
     return ApiResponse(
         success=True,

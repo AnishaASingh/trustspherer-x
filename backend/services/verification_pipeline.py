@@ -384,6 +384,8 @@ def run_7layer_verification_pipeline(
         "trust_score": trust_score,
         "risk_level": risk_level_str,
         "file_hash": file_hash,
+        "factors": layer_scores,
+        "checks": checks,
         "ai_summary": ai_insights.get("security_summary"),
         "ai_insights": ai_insights,
         "email_metadata": email_metadata,
@@ -456,6 +458,7 @@ def run_7layer_verification_pipeline(
             "severity": frontend_risk,
             "status": "OPEN",
             "detected_date": now_str,
+            "is_demo": is_demo_flag,
             "timeline": [
                 {
                     "step": "Asset uploaded",
