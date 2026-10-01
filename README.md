@@ -4,7 +4,23 @@ TrustSphere is a full-stack **Enterprise Decision Trust Intelligence Platform** 
 
 ---
 
-## 🚀 Quick Start
+## 🌐 Live Cloud Deployment
+
+| Service | Environment | Live URL | Status |
+| :--- | :--- | :--- | :--- |
+| **Frontend Web App** | Render (Cloud) | **[https://trustspherer-x-1.onrender.com](https://trustspherer-x-1.onrender.com)** | 🟢 Active |
+| **Backend API** | Render (Cloud) | **[https://trustspherer-x.onrender.com](https://trustspherer-x.onrender.com)** | 🟢 Active |
+| **Interactive API Docs** | Swagger UI | **[https://trustspherer-x.onrender.com/docs](https://trustspherer-x.onrender.com/docs)** | 🟢 Active |
+| **Database** | MongoDB Atlas | Cloud Cluster (`TrustSphereDB`) | 🟢 Connected |
+
+> **Default Demo Login:**
+> - **Email:** `admin@trustsphere.com`
+> - **Password:** `Admin@123`
+> *(Or use the "Register" button on the login screen to create a new account)*
+
+---
+
+## 🚀 Local Development Setup
 
 ### 1. Backend (FastAPI + MongoDB + Groq AI)
 ```powershell
