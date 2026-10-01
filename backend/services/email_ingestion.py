@@ -149,7 +149,9 @@ def get_google_oauth_config() -> Tuple[str, str, str]:
         if os.environ.get("RENDER")
         else "http://localhost:8000/api/ingestion/email/oauth/callback"
     )
-    redirect_uri = os.environ.get("GOOGLE_REDIRECT_URI", default_redirect).strip()
+    redirect_uri = os.environ.get("GOOGLE_REDIRECT_URI", "").strip()
+    if not redirect_uri or (os.environ.get("RENDER") and ("localhost" in redirect_uri or "127.0.0.1" in redirect_uri)):
+        redirect_uri = default_redirect
     return client_id, client_secret, redirect_uri
 
 
