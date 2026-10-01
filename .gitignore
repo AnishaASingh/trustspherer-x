@@ -30,6 +30,10 @@ frontend/.env
 !.env.example
 !backend/.env.example
 !**/.env.example
+!.env.development
+!.env.production
+!frontend/.env.development
+!frontend/.env.production
 *client_secret*.json
 *oauth_token*.json
 *.pem
@@ -51,4 +55,4 @@ yarn-error.log*
 pnpm-debug.log*
 
 backend/uploads/
-mongodb_backup/
+# mongodb_backup/ (tracked for initial database seed)

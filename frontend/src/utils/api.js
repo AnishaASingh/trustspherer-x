@@ -1,10 +1,53 @@
 /**
  * TrustSphere Centralized API Client
  * Connects frontend React components to FastAPI backend and MongoDB.
+ * Dynamically resolves target backend URL:
+ * - Localhost development: http://localhost:8000/api
+ * - Render / cloud deployment: https://trustspherer-x.onrender.com/api
+ * Supports build-time or runtime environment overrides via VITE_API_BASE_URL.
  */
 
-const rawBase = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:8000';
-const API_BASE_URL = rawBase.endsWith('/api') ? rawBase : `${rawBase.replace(/\/$/, '')}/api`;
+function resolveApiBaseUrl() {
+  const envBase = (
+    import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VITE_API_URL ||
+    ''
+  ).trim();
+
+  // Browser runtime detection
+  if (typeof window !== 'undefined' && window.location) {
+    const hostname = (window.location.hostname || '').toLowerCase();
+    const isLocalhost =
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0' ||
+      hostname.endsWith('.local');
+
+    // 1. Remote cloud deployment (Render, production, etc.)
+    if (!isLocalhost) {
+      // If a non-localhost remote URL was explicitly provided at build-time, use it
+      if (envBase && !envBase.includes('localhost') && !envBase.includes('127.0.0.1')) {
+        return envBase.endsWith('/api') ? envBase : `${envBase.replace(/\/$/, '')}/api`;
+      }
+      // Production default fallback to Render backend
+      return 'https://trustspherer-x.onrender.com/api';
+    }
+
+    // 2. Localhost development (when browser is on localhost/127.0.0.1)
+    if (envBase && (envBase.includes('localhost') || envBase.includes('127.0.0.1'))) {
+      return envBase.endsWith('/api') ? envBase : `${envBase.replace(/\/$/, '')}/api`;
+    }
+    return 'http://localhost:8000/api';
+  }
+
+  // 3. Non-browser / SSR fallback
+  if (envBase) {
+    return envBase.endsWith('/api') ? envBase : `${envBase.replace(/\/$/, '')}/api`;
+  }
+  return 'http://localhost:8000/api';
+}
+
+export const API_BASE_URL = resolveApiBaseUrl();
 
 // Authentication token helpers
 export const TOKEN_KEY = 'trustsphere_token';
@@ -51,7 +94,7 @@ async function request(endpoint, options = {}) {
   } catch (netErr) {
     console.error(`[TrustSphere Network Error] ${options.method || 'GET'} ${url}:`, netErr);
     const friendlyError = new Error(
-      `Unable to connect to TrustSphere backend at ${API_BASE_URL}. Ensure the FastAPI server is running on port 8000.`
+      `Unable to connect to TrustSphere backend at ${API_BASE_URL}. Ensure the backend service is running and accessible.`
     );
     friendlyError.isNetworkError = true;
     throw friendlyError;

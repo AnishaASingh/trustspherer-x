@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"asset_id":{"$numberInt":"1"}},"name":"asset_id_1"},{"v":{"$numberInt":"2"},"key":{"recommendation_id":{"$numberInt":"1"}},"name":"recommendation_id_1","unique":true}],"uuid":"97932aac074942f699b558d19fa1dd9b","collectionName":"recommendations","type":"collection"}

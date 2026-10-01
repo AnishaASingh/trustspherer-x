@@ -117,16 +117,34 @@ async def custom_validation_exception_handler(request: Request, exc: RequestVali
 
 
 # ============================================================
-# CORS CONFIGURATION (PHASE 2 SECTION 12)
+# CORS CONFIGURATION (PHASE 2 SECTION 12 & RENDER DEPLOYMENT COMPATIBILITY)
 # ============================================================
+
+cors_env = os.environ.get("CORS_ORIGINS") or os.environ.get("CORS_ORIGIN") or ""
+custom_origins = [orig.strip().rstrip("/") for orig in cors_env.split(",") if orig.strip()]
+
+default_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "https://trustspherer-x-1.onrender.com"
+]
+
+frontend_env = os.environ.get("FRONTEND_URL", "").strip().rstrip("/")
+if frontend_env and frontend_env not in custom_origins and frontend_env not in default_origins:
+    custom_origins.append(frontend_env)
+
+all_origins = list(dict.fromkeys(default_origins + custom_origins))
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000"
-    ],
+    allow_origins=all_origins,
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.onrender\.com",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

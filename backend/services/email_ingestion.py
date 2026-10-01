@@ -144,10 +144,12 @@ def get_google_oauth_config() -> Tuple[str, str, str]:
     _reload_env()
     client_id = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
     client_secret = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
-    redirect_uri = os.environ.get(
-        "GOOGLE_REDIRECT_URI",
-        "http://localhost:8000/api/ingestion/email/oauth/callback"
-    ).strip()
+    default_redirect = (
+        f"{os.environ.get('RENDER_EXTERNAL_URL', 'https://trustspherer-x.onrender.com')}/api/ingestion/email/oauth/callback"
+        if os.environ.get("RENDER")
+        else "http://localhost:8000/api/ingestion/email/oauth/callback"
+    )
+    redirect_uri = os.environ.get("GOOGLE_REDIRECT_URI", default_redirect).strip()
     return client_id, client_secret, redirect_uri
 
 

@@ -144,10 +144,11 @@ def gmail_oauth_callback(
     is_browser_navigation = ("text/html" in accept_header) and (format != "json")
 
     if is_browser_navigation:
+        default_fe = "https://trustspherer-x-1.onrender.com" if os.environ.get("RENDER") else "http://localhost:5173"
         frontend_base = (
             os.environ.get("FRONTEND_URL")
             or os.environ.get("CORS_ORIGIN")
-            or "http://localhost:5173"
+            or default_fe
         ).rstrip("/")
 
         if res.get("success"):

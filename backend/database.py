@@ -17,7 +17,11 @@ load_dotenv(os.path.join(BACKEND_DIR, ".env"))
 # CONFIGURATION VIA ENVIRONMENT VARIABLES
 # ============================================================
 
-MONGODB_URL = os.environ.get("MONGODB_URL", "mongodb://localhost:27017")
+MONGODB_URL = (
+    os.environ.get("MONGODB_URL")
+    or os.environ.get("MONGODB_URI")
+    or "mongodb://localhost:27017"
+)
 MONGODB_DATABASE = os.environ.get("MONGODB_DATABASE", "TrustSphereDB")
 
 # Global singleton client and database instances

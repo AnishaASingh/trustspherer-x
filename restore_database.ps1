@@ -4,17 +4,27 @@
 # Backup Source: .\mongodb_backup\TrustSphereDB
 # ==============================================================================
 
+param(
+    [string]$TargetUri = $env:MONGODB_URL,
+    [string]$TargetDb = $env:MONGODB_DATABASE
+)
+
 $ErrorActionPreference = "Stop"
 
+if (-not $TargetUri) { $TargetUri = $env:MONGODB_URI }
+if (-not $TargetUri) { $TargetUri = "mongodb://localhost:27017" }
+if (-not $TargetDb) { $TargetDb = "TrustSphereDB" }
+
 $ProjectRoot = if ($PSScriptRoot) { $PSScriptRoot } else { "C:\TrustSphere" }
-$DatabaseName = "TrustSphereDB"
-$MongoUri = "mongodb://localhost:27017"
+$DatabaseName = $TargetDb
+$MongoUri = $TargetUri
 $BackupRoot = Join-Path $ProjectRoot "mongodb_backup"
-$BackupDbDir = Join-Path $BackupRoot $DatabaseName
+$BackupDbDir = Join-Path $BackupRoot "TrustSphereDB"
 
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host "  TrustSphere MongoDB Restore Utility" -ForegroundColor Cyan
-Write-Host "  Target Database : $DatabaseName ($MongoUri)" -ForegroundColor Cyan
+Write-Host "  Target Database : $DatabaseName" -ForegroundColor Cyan
+Write-Host "  Target URI      : $($MongoUri -replace '://.*?:.*?@', '://***:***@')" -ForegroundColor Cyan
 Write-Host "  Backup Location : $BackupDbDir" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
@@ -37,32 +47,36 @@ if (-not $BsonFiles -or $BsonFiles.Count -eq 0) {
 Write-Host "[OK] Found $($BsonFiles.Count) collection backup files in '$BackupDbDir'." -ForegroundColor Green
 
 # ------------------------------------------------------------------------------
-# 2. Check That MongoDB Server is Running on localhost:27017
+# 2. Check Connection (Localhost port check or Remote URI check)
 # ------------------------------------------------------------------------------
-Write-Host "[INFO] Checking if MongoDB is running on localhost:27017..." -ForegroundColor Cyan
+if ($MongoUri -match "localhost|127\.0\.0\.1") {
+    Write-Host "[INFO] Checking if MongoDB is running on localhost:27017..." -ForegroundColor Cyan
 
-$MongoRunning = $false
-try {
-    $TcpClient = New-Object System.Net.Sockets.TcpClient
-    $ConnectAsync = $TcpClient.BeginConnect("127.0.0.1", 27017, $null, $null)
-    $WaitResult = $ConnectAsync.AsyncWaitHandle.WaitOne(3000, $false)
-    if ($WaitResult -and $TcpClient.Connected) {
-        $MongoRunning = $true
-    }
-    $TcpClient.Close()
-} catch {
     $MongoRunning = $false
-}
+    try {
+        $TcpClient = New-Object System.Net.Sockets.TcpClient
+        $ConnectAsync = $TcpClient.BeginConnect("127.0.0.1", 27017, $null, $null)
+        $WaitResult = $ConnectAsync.AsyncWaitHandle.WaitOne(3000, $false)
+        if ($WaitResult -and $TcpClient.Connected) {
+            $MongoRunning = $true
+        }
+        $TcpClient.Close()
+    } catch {
+        $MongoRunning = $false
+    }
 
-if (-not $MongoRunning) {
-    Write-Host "[ERROR] MongoDB is not reachable on localhost:27017." -ForegroundColor Red
-    Write-Host "Please ensure MongoDB Community Server is installed and running:" -ForegroundColor Yellow
-    Write-Host "  - Open PowerShell as Administrator and run: net start MongoDB" -ForegroundColor Yellow
-    Write-Host "  - Or open Windows Services (services.msc) and start 'MongoDB Server (MongoDB)'." -ForegroundColor Yellow
-    exit 1
-}
+    if (-not $MongoRunning) {
+        Write-Host "[ERROR] MongoDB is not reachable on localhost:27017." -ForegroundColor Red
+        Write-Host "Please ensure MongoDB Community Server is installed and running:" -ForegroundColor Yellow
+        Write-Host "  - Open PowerShell as Administrator and run: net start MongoDB" -ForegroundColor Yellow
+        Write-Host "  - Or open Windows Services (services.msc) and start 'MongoDB Server (MongoDB)'." -ForegroundColor Yellow
+        exit 1
+    }
 
-Write-Host "[OK] MongoDB is active and listening on localhost:27017." -ForegroundColor Green
+    Write-Host "[OK] MongoDB is active and listening on localhost:27017." -ForegroundColor Green
+} else {
+    Write-Host "[INFO] Target is a cloud/remote MongoDB URI. Skipping localhost check." -ForegroundColor Cyan
+}
 
 # ------------------------------------------------------------------------------
 # 3. Locate mongorestore.exe (or Use Built-in Python BSON Restore Fallback)
