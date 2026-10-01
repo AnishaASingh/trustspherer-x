@@ -39,10 +39,19 @@ def get_client() -> MongoClient:
     """
     global _client
     if _client is None:
+        client_kwargs = {
+            "serverSelectionTimeoutMS": 5000,
+            "connectTimeoutMS": 5000,
+        }
+        if "mongodb+srv" in MONGODB_URL or "ssl=true" in MONGODB_URL.lower():
+            try:
+                import certifi
+                client_kwargs["tlsCAFile"] = certifi.where()
+            except Exception:
+                pass
         _client = MongoClient(
             MONGODB_URL,
-            serverSelectionTimeoutMS=3000,
-            connectTimeoutMS=3000
+            **client_kwargs
         )
     return _client
 
